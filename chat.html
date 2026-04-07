@@ -41,6 +41,35 @@
       display: flex; flex-direction: column;
     }
 
+    /* ── 데스크탑: 폰 프레임 ────────────────────────── */
+    @media (min-width: 768px) {
+      html, body {
+        background: linear-gradient(135deg, #3b0764 0%, #6d28d9 50%, #a21caf 100%);
+      }
+      .page {
+        align-items: center;
+        min-height: 100vh;
+        padding: 32px 0;
+      }
+      .shell {
+        max-width: 390px;
+        min-height: 0;
+        height: 820px;
+        max-height: calc(100vh - 64px);
+        border-radius: 40px;
+        overflow: hidden;
+        position: relative;
+        box-shadow:
+          0 0 0 8px rgba(255,255,255,.12),
+          0 0 0 10px rgba(255,255,255,.06),
+          0 32px 80px rgba(0,0,0,.5);
+      }
+      /* 오버레이를 폰 프레임 안에 가둠 */
+      .transcript-overlay {
+        position: absolute;
+      }
+    }
+
     /* ── 헤더 ──────────────────────────────────────── */
     .header {
       background: linear-gradient(135deg, var(--purple), var(--purple-l));
