@@ -43,35 +43,90 @@
       display: flex; flex-direction: column;
     }
 
-    /* ── 데스크탑: 폰 프레임 ────────────────────────── */
+    /* ── PC 사이드 패널 기본 (모바일 hidden) ───────── */
+    .pc-panel { display: none; }
+
+    /* ── 데스크탑: 홈페이지 2컬럼 레이아웃 ─────────── */
     @media (min-width: 768px) {
-      html, body {
-        background: linear-gradient(135deg, #3b0764 0%, #6d28d9 50%, #a21caf 100%);
-      }
+      html, body { background: #f5f0ff; }
+
       .page {
-        align-items: center;
+        flex-direction: row;
+        align-items: stretch;
         min-height: 100vh;
-        padding: 32px 0;
+        padding: 0;
+        max-width: 1280px;
+        margin: 0 auto;
+        box-shadow: 0 0 80px rgba(0,0,0,.10);
       }
+
       .shell {
-        max-width: 390px;
-        min-height: 0;
-        height: 820px;
-        max-height: calc(100vh - 64px);
-        border-radius: 40px;
-        overflow: hidden;
-        position: relative;
-        transform: translateZ(0); /* fixed 자식의 포함 블록을 .shell로 고정 */
-        box-shadow:
-          0 0 0 8px rgba(255,255,255,.12),
-          0 0 0 10px rgba(255,255,255,.06),
-          0 32px 80px rgba(0,0,0,.5);
+        flex: 1;
+        max-width: none;
+        min-height: 100vh;
+        height: auto;
+        border-radius: 0;
+        overflow: visible;
+        box-shadow: none;
+        /* transform 없음 — fixed overlay가 전체 뷰포트 커버 */
       }
-      /* 데스크탑: transcript-box를 폰 프레임 너비에 맞게 제한 */
-      .transcript-box {
-        max-width: 358px;
-        max-height: calc(min(820px, 100vh - 64px) - 64px);
+
+      /* 헤더 버튼들 → 사이드패널로 이동 */
+      .h-history-btn, .h-collect-btn, .h-save-btn { display: none; }
+
+      /* PC 사이드 패널 표시 */
+      .pc-panel {
+        display: flex;
+        flex-direction: column;
+        width: 280px;
+        flex-shrink: 0;
+        background: linear-gradient(160deg, #3b0764 0%, #6d28d9 55%, #a21caf 100%);
+        padding: 40px 22px 28px;
+        color: #fff;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        gap: 0;
       }
+      .pc-panel-logo  { font-size: 52px; text-align: center; margin-bottom: 18px; }
+      .pc-panel-title { font-size: 20px; font-weight: 800; text-align: center; letter-spacing: -.3px; margin-bottom: 6px; }
+      .pc-panel-sub   { font-size: 12.5px; opacity: .82; text-align: center; line-height: 1.7; margin-bottom: 28px; }
+      .pc-panel-div   { height: 1px; background: rgba(255,255,255,.2); margin-bottom: 20px; }
+      .pc-panel-status {
+        display: flex; align-items: center; gap: 7px;
+        font-size: 12.5px; opacity: .9;
+        margin-bottom: 24px;
+      }
+      .pc-panel-actions { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+      .pc-panel-btn {
+        display: flex; align-items: center; gap: 9px;
+        padding: 12px 16px; border-radius: 14px;
+        background: rgba(255,255,255,.15);
+        border: 1.5px solid rgba(255,255,255,.25);
+        color: #fff; font-size: 13.5px; font-weight: 600;
+        cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+        transition: background .15s; width: 100%; text-align: left;
+      }
+      .pc-panel-btn:hover { background: rgba(255,255,255,.27); }
+      .pc-panel-btn.save {
+        background: #fff; color: #7c3aed;
+        border-color: #fff; margin-top: 4px;
+      }
+      .pc-panel-btn.save:hover { background: #f5f3ff; }
+      .pc-panel-footer {
+        font-size: 11px; opacity: .55; line-height: 1.8;
+        border-top: 1px solid rgba(255,255,255,.15);
+        padding-top: 18px; margin-top: 24px;
+      }
+    }
+
+    /* ── 모바일: 헤더 버튼 아이콘만 표시 ────────────── */
+    @media (max-width: 767px) {
+      .h-history-btn { padding: 5px 8px; font-size: 14px; }
+      .h-collect-btn { display: none; }
+      .h-save-btn    { padding: 5px 8px; font-size: 14px; }
+      .h-history-text, .h-save-text { display: none; }
     }
 
     /* ── 헤더 ──────────────────────────────────────── */
@@ -98,7 +153,9 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 22px; flex-shrink: 0;
     }
-    .h-info { flex: 1; }
+    .h-info { flex: 1; min-width: 0; overflow: hidden; }
+    .h-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .h-sub  { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .h-name { font-size: 16px; font-weight: 700; }
     .h-sub  { font-size: 11.5px; opacity: .82; margin-top: 1px; }
     .h-status { display: flex; align-items: center; gap: 5px; font-size: 12px; opacity: .9; }
@@ -796,6 +853,30 @@
 </head>
 <body>
 <div class="page">
+
+<!-- PC 전용 사이드 패널 -->
+<aside class="pc-panel">
+  <div class="pc-panel-logo">👩‍💼</div>
+  <div class="pc-panel-title">루마네 상담원</div>
+  <div class="pc-panel-sub">케이트블랑 드레스룸<br>AI 상담 서비스</div>
+  <div class="pc-panel-div"></div>
+  <div class="pc-panel-status">
+    <div class="dot-live"></div>
+    <span id="pcStatusText">연결 중…</span>
+  </div>
+  <div class="pc-panel-actions">
+    <button class="pc-panel-btn" onclick="toggleHistory()">📚 이전 상담 이력</button>
+    <button class="pc-panel-btn" onclick="toggleCollect()">📋 수집 현황</button>
+    <button class="pc-panel-btn save" onclick="saveConversation()" id="pcSaveBtn">💾 상담 저장</button>
+  </div>
+  <div class="pc-panel-footer">
+    케이트블랑 드레스룸<br>
+    AI 상담은 24시간 운영됩니다<br><br>
+    상담 저장 후 견적서가 자동 생성되며<br>
+    PDF로 출력하실 수 있습니다
+  </div>
+</aside>
+
 <div class="shell">
 
   <!-- 헤더 -->
@@ -813,7 +894,7 @@
     <!-- 이전 상담 이력 버튼 -->
     <button class="h-history-btn" onclick="toggleHistory()" id="historyBtn">
       <span class="h-history-dot"></span>
-      📚 이전상담
+      📚<span class="h-history-text"> 이전상담</span>
     </button>
     <!-- 수집현황 토글 버튼 -->
     <button class="h-collect-btn" onclick="toggleCollect()" id="collectBtn">
@@ -821,7 +902,7 @@
     </button>
     <!-- 상담 저장 버튼 -->
     <button class="h-save-btn" onclick="saveConversation()" id="saveBtn">
-      💾 상담저장
+      💾<span class="h-save-text"> 상담저장</span>
     </button>
   </header>
 
@@ -1233,12 +1314,17 @@ async function checkServer() {
     serverOnline = false;
   }
 
+  const $pcStatus = document.getElementById('pcStatusText');
+  function setAllStatus(text) {
+    $statusTxt.textContent = text;
+    if ($pcStatus) $pcStatus.textContent = text;
+  }
   if (serverOnline) {
-    $statusTxt.textContent = '온라인';
+    setAllStatus('온라인');
     setBanner('ok', '✅ AI 루마네와 실제 연결되었습니다');
     setTimeout(() => setBanner(null), 2500);
   } else {
-    $statusTxt.textContent = '데모 모드';
+    setAllStatus('데모 모드');
     setBanner('warn',
       '⚠️ 서버 미연결 — 데모 모드로 동작 중입니다. ' +
       'server 폴더에서 npm start 실행 후 새로고침하세요.');
@@ -1992,9 +2078,26 @@ async function saveConversation() {
     return;
   }
 
-  const btn = document.getElementById('saveBtn');
-  btn.disabled = true;
-  btn.textContent = '⏳ 저장 중…';
+  const btn   = document.getElementById('saveBtn');
+  const pcBtn = document.getElementById('pcSaveBtn');
+
+  // saveBtn은 내부에 <span class="h-save-text">가 있으므로 innerHTML로 복원해야 span이 유지됨
+  // pcSaveBtn은 순수 텍스트 버튼이므로 textContent 사용
+  function setSaveBtns(disabled, stateText, restoreOriginal) {
+    if (btn) {
+      btn.disabled = disabled;
+      if (restoreOriginal) {
+        btn.innerHTML = '💾<span class="h-save-text"> 상담저장</span>';
+      } else {
+        btn.textContent = stateText;
+      }
+    }
+    if (pcBtn) {
+      pcBtn.disabled = disabled;
+      pcBtn.textContent = restoreOriginal ? '💾 상담 저장' : stateText;
+    }
+  }
+  setSaveBtns(true, '⏳ 저장 중…', false);
 
   try {
     const res = await fetch(`${SERVER}/api/summarize`, {
@@ -2006,17 +2109,16 @@ async function saveConversation() {
     const data = await res.json();
 
     if (data.success) {
-      btn.textContent = '✅ 저장완료';
+      setSaveBtns(false, '✅ 저장완료', false);
       openQuote(data.summary);
-      setTimeout(() => { btn.disabled = false; btn.textContent = '💾 상담저장'; }, 2000);
+      setTimeout(() => setSaveBtns(false, null, true), 2000);
     } else {
       throw new Error(data.error);
     }
   } catch (err) {
     console.error('저장 오류:', err);
     alert('저장 중 오류가 발생했습니다.');
-    btn.disabled = false;
-    btn.textContent = '💾 상담저장';
+    setSaveBtns(false, null, true);
   }
 }
 
