@@ -62,8 +62,65 @@ const SYSTEM_PROMPT = `당신은 '루마네'라는 이름의 케이트블랑 시
 ${mdContents}`;
 
 // ── 미들웨어 ──────────────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://lumane-server.onrender.com',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+  ],
+}));
 app.use(express.json());
+
+// ── Admin API 인증 미들웨어 ───────────────────────────────────
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    // 토큰 미설정 시 서버 콘솔에 경고 (운영 중엔 항상 설정할 것)
+    console.warn('⚠️  ADMIN_TOKEN이 .env에 설정되지 않았습니다. Admin API가 무방비 상태입니다.');
+    return next();
+  }
+  const auth = req.headers['authorization'];
+  if (auth !== `Bearer ${ADMIN_TOKEN}`) {
+    return res.status(401).json({ error: '인증이 필요합니다.' });
+  }
+  next();
+}
+
+// 모든 /api/admin/* 라우트에 인증 적용
+app.use('/api/admin', requireAdmin);
+
+// ── 라이브 세션 관리 (메모리) ─────────────────────────────────
+// 서버 재시작 시 초기화됨. 필요 시 Supabase로 이전 가능.
+const sessions = new Map();
+// 구조: Map<sessionId, {
+//   id, mode: 'ai'|'admin', messages: [],
+//   pendingAdminMsgs: [], customerName: null,
+//   startedAt: Date, lastActivity: Date
+// }>
+
+function getOrCreateSession(sessionId) {
+  if (!sessions.has(sessionId)) {
+    sessions.set(sessionId, {
+      id: sessionId,
+      mode: 'ai',
+      messages: [],
+      pendingAdminMsgs: [],
+      customerName: null,
+      startedAt: new Date(),
+      lastActivity: new Date(),
+    });
+  }
+  return sessions.get(sessionId);
+}
+
+// 30분 이상 비활성 세션 정리 (메모리 관리)
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, sess] of sessions) {
+    if (now - sess.lastActivity > 30 * 60 * 1000) sessions.delete(id);
+  }
+}, 5 * 60 * 1000);
 
 // ── 정적 파일 제공 (chat.html을 같은 폴더에 두면 바로 접속 가능) ──
 app.use(express.static(__dirname));
@@ -134,10 +191,28 @@ app.get('/api/find-example', (req, res) => {
 
 // ── 채팅 API ──────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body;
+  const { messages, sessionId } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'messages 배열이 필요합니다.' });
+  }
+
+  // 세션이 있으면 메시지 동기화
+  if (sessionId) {
+    const sess = getOrCreateSession(sessionId);
+    sess.messages = messages;
+    sess.lastActivity = new Date();
+
+    // 고객 이름 자동 추출 (첫 번째 user 메시지)
+    const firstUser = messages.find(m => m.role === 'user');
+    if (firstUser && !sess.customerName) {
+      sess.customerName = firstUser.content.slice(0, 20);
+    }
+
+    // admin 모드면 AI 응답 없이 대기 신호만 반환
+    if (sess.mode === 'admin') {
+      return res.json({ message: null, adminMode: true });
+    }
   }
 
   try {
@@ -149,12 +224,115 @@ app.post('/api/chat', async (req, res) => {
     });
 
     const reply = response.content[0].text;
+
+    // 세션에 AI 응답도 저장
+    if (sessionId && sessions.has(sessionId)) {
+      const sess = sessions.get(sessionId);
+      sess.messages.push({ role: 'assistant', content: reply });
+      sess.lastActivity = new Date();
+    }
+
     res.json({ message: reply });
 
   } catch (err) {
     console.error('Anthropic API 오류:', err.message);
     res.status(500).json({ error: '서버 오류가 발생했습니다: ' + err.message });
   }
+});
+
+// ── 세션 등록 API ─────────────────────────────────────────────
+app.post('/api/session/register', (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId || !SESSION_ID_RE.test(sessionId)) {
+    return res.status(400).json({ error: '유효하지 않은 sessionId' });
+  }
+  getOrCreateSession(sessionId);
+  res.json({ ok: true });
+});
+
+// ── 세션 상태 폴링 API (고객 → 서버, 2초마다) ─────────────────
+// 고객이 admin 난입 여부와 pending 메시지를 확인
+const SESSION_ID_RE = /^S-\d{13}-[a-z0-9]{5}$/;
+
+app.get('/api/session/status', (req, res) => {
+  const { id } = req.query;
+  if (!id || !SESSION_ID_RE.test(id) || !sessions.has(id)) {
+    return res.json({ mode: 'ai', pendingMsgs: [] });
+  }
+
+  const sess = sessions.get(id);
+  sess.lastActivity = new Date();
+
+  // pending 메시지를 한 번에 전달하고 비움
+  const pending = [...sess.pendingAdminMsgs];
+  sess.pendingAdminMsgs = [];
+
+  res.json({ mode: sess.mode, pendingMsgs: pending });
+});
+
+// ── 어드민: 활성 세션 목록 ────────────────────────────────────
+app.get('/api/admin/sessions', (req, res) => {
+  const list = [];
+  for (const [id, sess] of sessions) {
+    list.push({
+      id,
+      mode: sess.mode,
+      customerName: sess.customerName || '(이름 미수집)',
+      messageCount: sess.messages.length,
+      startedAt: sess.startedAt,
+      lastActivity: sess.lastActivity,
+    });
+  }
+  // 최근 활동 순 정렬
+  list.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+  res.json({ sessions: list });
+});
+
+// ── 어드민: 특정 세션 전체 메시지 조회 ───────────────────────
+app.get('/api/admin/session/:id', (req, res) => {
+  const sess = sessions.get(req.params.id);
+  if (!sess) return res.status(404).json({ error: '세션 없음' });
+  res.json({ session: sess });
+});
+
+// ── 어드민: 난입 (AI → admin 모드 전환) ──────────────────────
+app.post('/api/admin/takeover', (req, res) => {
+  const { sessionId } = req.body;
+  const sess = sessions.get(sessionId);
+  if (!sess) return res.status(404).json({ error: '세션 없음' });
+
+  sess.mode = 'admin';
+  sess.lastActivity = new Date();
+  console.log(`🎯 Admin 난입: 세션 ${sessionId}`);
+  res.json({ ok: true });
+});
+
+// ── 어드민: 돌려주기 (admin → AI 모드 복귀) ─────────────────
+app.post('/api/admin/release', (req, res) => {
+  const { sessionId } = req.body;
+  const sess = sessions.get(sessionId);
+  if (!sess) return res.status(404).json({ error: '세션 없음' });
+
+  sess.mode = 'ai';
+  sess.lastActivity = new Date();
+  console.log(`🤖 AI 복귀: 세션 ${sessionId}`);
+  res.json({ ok: true });
+});
+
+// ── 어드민: 메시지 전송 ───────────────────────────────────────
+app.post('/api/admin/message', (req, res) => {
+  const { sessionId, message } = req.body;
+  if (!sessionId || !message) return res.status(400).json({ error: 'sessionId, message 필요' });
+
+  const sess = sessions.get(sessionId);
+  if (!sess) return res.status(404).json({ error: '세션 없음' });
+
+  const msg = { role: 'assistant', content: message, fromAdmin: true, time: new Date().toISOString() };
+  sess.pendingAdminMsgs.push(msg);
+  sess.messages.push(msg);
+  sess.lastActivity = new Date();
+
+  res.json({ ok: true });
 });
 
 // ── 대화 저장 API ─────────────────────────────────────────────
