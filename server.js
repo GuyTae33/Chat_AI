@@ -6,11 +6,12 @@
 
 require('dotenv').config(); // .env 파일 로드
 
-const express  = require('express');
-const cors     = require('cors');
+const express   = require('express');
+const cors      = require('cors');
+const rateLimit = require('express-rate-limit');
 const Anthropic = require('@anthropic-ai/sdk');
 const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
 
 // ── Supabase 클라이언트 ───────────────────────────────────────
@@ -70,6 +71,21 @@ app.use(cors({
   ],
 }));
 app.use(express.json());
+
+// ── Rate Limit — IP당 1분 10회 제한 ──────────────────────────
+const chatRateLimit = rateLimit({
+  windowMs: 60 * 1000,   // 1분
+  max: 10,               // 최대 10회
+  keyGenerator: (req) => req.ip,
+  handler: (req, res) => {
+    console.warn(`🚫 Rate limit 초과: ${req.ip}`);
+    res.status(429).json({
+      error: '잠시 후 다시 시도해 주세요. (1분에 최대 10회 전송 가능)',
+    });
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ── Admin API 인증 미들웨어 ───────────────────────────────────
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
@@ -189,8 +205,26 @@ app.get('/api/find-example', (req, res) => {
   }
 });
 
+// ── Haiku 사전 필터 — 관련 없는 메시지 차단 ─────────────────
+async function isRelevantMessage(userMessage) {
+  try {
+    const check = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 10,
+      system: `당신은 메시지가 드레스룸·시스템행거·인테리어 상담과 관련 있는지 판단합니다.
+관련 있으면 "YES", 없으면 "NO"만 반환하세요.
+관련 있는 예시: 치수 문의, 색상 선택, 가격 질문, 설치 지역, 옵션 질문, 인사말, 감사 인사, 네/아니오 답변, 숫자만 입력.
+관련 없는 예시: 정치, 연예인, 음식, 게임, 욕설, 전혀 무관한 잡담.`,
+      messages: [{ role: 'user', content: `메시지: "${userMessage}"` }],
+    });
+    return check.content[0].text.trim().toUpperCase().startsWith('YES');
+  } catch {
+    return true; // 필터 오류 시 통과 (서비스 중단 방지)
+  }
+}
+
 // ── 채팅 API ──────────────────────────────────────────────────
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatRateLimit, async (req, res) => {
   const { messages, sessionId } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
@@ -212,6 +246,18 @@ app.post('/api/chat', async (req, res) => {
     // admin 모드면 AI 응답 없이 대기 신호만 반환
     if (sess.mode === 'admin') {
       return res.json({ message: null, adminMode: true });
+    }
+  }
+
+  // ── Haiku 사전 필터: 마지막 user 메시지만 검사 ──────────────
+  const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+  if (lastUserMsg) {
+    const relevant = await isRelevantMessage(lastUserMsg.content);
+    if (!relevant) {
+      console.warn(`🚫 관련 없는 메시지 차단 (IP: ${req.ip}): "${lastUserMsg.content.slice(0, 40)}"`);
+      return res.json({
+        message: '죄송해요, 저는 케이트블랑 드레스룸 상담만 도와드릴 수 있어요 😊\n드레스룸 관련 질문이 있으시면 편하게 말씀해 주세요!',
+      });
     }
   }
 
