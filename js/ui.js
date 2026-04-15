@@ -251,10 +251,15 @@ export function addMsg(role, text) {
     const bubblesCol = document.createElement('div');
     bubblesCol.className = 'msg-bubbles';
 
-    const b = document.createElement('div');
-    b.className = 'bubble user';
-    b.innerHTML = esc(clean);
-    bubblesCol.appendChild(b);
+    const special = renderBubbleContent(clean);
+    if (special) {
+      bubblesCol.appendChild(special);
+    } else {
+      const b = document.createElement('div');
+      b.className = 'bubble user';
+      b.innerHTML = esc(clean);
+      bubblesCol.appendChild(b);
+    }
 
     bubblesRow.appendChild(meta);
     bubblesRow.appendChild(bubblesCol);

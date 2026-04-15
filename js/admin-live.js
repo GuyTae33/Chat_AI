@@ -314,17 +314,34 @@ function showAdminAttachBar(file) {
 
   const isImg = file.type.startsWith('image/');
   bar.innerHTML = (isImg
-    ? `<img src="${adminPendingObjectUrl}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;flex-shrink:0;" alt="">`
+    ? `<img src="${adminPendingObjectUrl}" id="adminAttachThumb" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;flex-shrink:0;cursor:zoom-in;" alt="" title="클릭하면 크게 보기">`
     : `<span style="font-size:22px;flex-shrink:0;">📎</span>`) +
     `<span style="font-size:12px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;">${file.name || 'screenshot.png'}</span>
      <button id="adminAttachRemove" style="flex-shrink:0;background:none;border:none;font-size:14px;color:#9ca3af;cursor:pointer;padding:4px 6px;border-radius:6px;">✕</button>`;
 
   bar.style.display = 'flex';
+
+  if (isImg) {
+    document.getElementById('adminAttachThumb').addEventListener('click', () => {
+      showAdminLightbox(adminPendingObjectUrl);
+    });
+  }
+
   document.getElementById('adminAttachRemove').addEventListener('click', () => {
     clearAdminPendingFile();
     document.getElementById('liveInput')?.focus();
   });
   refreshAdminSendBtn();
+}
+
+function showAdminLightbox(src) {
+  document.getElementById('adminLightbox')?.remove();
+  const lb = document.createElement('div');
+  lb.id = 'adminLightbox';
+  lb.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px;';
+  lb.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6);">`;
+  lb.addEventListener('click', () => lb.remove());
+  document.body.appendChild(lb);
 }
 
 function clearAdminPendingFile() {
