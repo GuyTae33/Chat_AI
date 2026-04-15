@@ -125,6 +125,35 @@ function addContextMenu(el, rawText) {
 }
 
 /* ================================================================
+   메시지 내용 렌더링 — 이미지/파일 패턴 감지
+================================================================ */
+function renderBubbleContent(text) {
+  /* [이미지]\nURL */
+  const imgMatch = text.match(/^\[이미지\]\n(https?:\/\/\S+)$/);
+  if (imgMatch) {
+    const url = imgMatch[1];
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'img-example';
+    img.alt = '첨부 이미지';
+    img.style.maxWidth = '220px';
+    img.onclick = () => window.open(url, '_blank', 'noopener,noreferrer');
+    const wrap = document.createElement('div');
+    wrap.appendChild(img);
+    return wrap;
+  }
+  /* [파일: name]\nURL */
+  const fileMatch = text.match(/^\[파일: ([^\]]+)\]\n(https?:\/\/\S+)$/);
+  if (fileMatch) {
+    const [, name, url] = fileMatch;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = `📎 <a href="${url}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">${esc(name)}</a>`;
+    return wrap;
+  }
+  return null; // 일반 텍스트
+}
+
+/* ================================================================
    메시지 렌더링
 ================================================================ */
 export function addMsg(role, text) {
@@ -164,10 +193,15 @@ export function addMsg(role, text) {
     bubblesCol.className = 'msg-bubbles';
 
     for (const part of parts) {
-      const b = document.createElement('div');
-      b.className = 'bubble bot';
-      b.innerHTML = esc(part);
-      bubblesCol.appendChild(b);
+      const special = renderBubbleContent(part);
+      if (special) {
+        bubblesCol.appendChild(special);
+      } else {
+        const b = document.createElement('div');
+        b.className = 'bubble bot';
+        b.innerHTML = esc(part);
+        bubblesCol.appendChild(b);
+      }
     }
 
     /* 메타 (시간) */
