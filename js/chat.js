@@ -420,9 +420,26 @@ document.addEventListener('DOMContentLoaded', () => {
   window.closeTranscript    = closeTranscript;
 
   /* 파일 업로드 초기화 */
-  initFileInput((url, name, isImage) => {
+  initFileInput(async (url, name, isImage) => {
     addFileMsg(url, name, isImage);
-    history.push({ role: 'user', content: isImage ? `[이미지: ${name}]` : `[파일: ${name}]` });
+
+    /* 절대 URL로 변환 (관리자 패널에서 이미지 렌더링 가능하도록) */
+    const fullUrl = url.startsWith('http') ? url : `${SERVER}${url}`;
+    const content = isImage
+      ? `[이미지]\n${fullUrl}`
+      : `[파일: ${name}]\n${fullUrl}`;
+    history.push({ role: 'user', content });
+
+    /* 서버에 즉시 동기화 → 관리자 패널에 바로 반영 */
+    if (serverOnline) {
+      try {
+        await fetch(`${SERVER}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: history, sessionId: SESSION_ID, syncOnly: true }),
+        });
+      } catch { /* 무시 */ }
+    }
   });
 
   /* 서버 확인 후 인사 + 세션 등록 + 폴링 시작 */
