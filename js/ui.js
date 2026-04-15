@@ -509,12 +509,19 @@ function showAttachBar(file) {
 
   const isImg = file.type.startsWith('image/');
   bar.innerHTML = isImg
-    ? `<img src="${pendingObjectUrl}" class="attach-thumb" alt="">`
+    ? `<img src="${pendingObjectUrl}" class="attach-thumb" id="attachThumb" alt="" title="클릭하면 크게 보기">`
     : `<span class="attach-icon">📎</span>`;
   bar.innerHTML += `<span class="attach-fname">${file.name || 'screenshot.png'}</span>
     <button class="attach-remove" id="attachRemoveBtn">✕</button>`;
 
   bar.style.display = 'flex';
+
+  if (isImg) {
+    document.getElementById('attachThumb').addEventListener('click', () => {
+      showImageLightbox(pendingObjectUrl);
+    });
+  }
+
   document.getElementById('attachRemoveBtn').addEventListener('click', () => {
     clearPendingFile();
     $inp.focus();
@@ -620,4 +627,15 @@ export function initFileInput() {
       if (file) showAttachBar(file);
     });
   }
+}
+
+/* ── 이미지 라이트박스 (크게 보기) ── */
+function showImageLightbox(src) {
+  document.getElementById('attachLightbox')?.remove();
+  const lb = document.createElement('div');
+  lb.id = 'attachLightbox';
+  lb.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px;';
+  lb.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6);">`;
+  lb.addEventListener('click', () => lb.remove());
+  document.body.appendChild(lb);
 }

@@ -1027,8 +1027,9 @@ html, body {
 .attach-thumb {
   width: 44px; height: 44px; object-fit: cover;
   border-radius: 8px; border: 1px solid var(--gray-200);
-  flex-shrink: 0;
+  flex-shrink: 0; cursor: zoom-in;
 }
+.attach-thumb:hover { opacity: .85; }
 .attach-icon { font-size: 22px; flex-shrink: 0; }
 .attach-fname {
   font-size: 12px; color: var(--gray-700);
