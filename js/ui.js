@@ -303,11 +303,9 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
 
     bubblesRow.appendChild(bubblesCol);
     bubblesRow.appendChild(meta);
+    bubblesRow.appendChild(makeActionBar(msgMid, 'bot', clean));
     body.appendChild(bubblesRow);
     group.appendChild(body);
-
-    /* 액션바 (답장) */
-    group.appendChild(makeActionBar(msgMid, 'bot', clean));
 
     $msgs.appendChild(group);
     addContextMenu(group, clean);
@@ -355,12 +353,10 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
       bubblesCol.appendChild(b);
     }
 
+    bubblesRow.appendChild(makeActionBar(msgMid, 'user', clean));
     bubblesRow.appendChild(meta);
     bubblesRow.appendChild(bubblesCol);
     group.appendChild(bubblesRow);
-
-    /* 액션바 (답장/수정/삭제) */
-    group.appendChild(makeActionBar(msgMid, 'user', clean));
 
     $msgs.appendChild(group);
     addContextMenu(group, clean);

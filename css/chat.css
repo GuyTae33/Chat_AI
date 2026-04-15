@@ -1086,12 +1086,11 @@ html, body {
 ================================================================ */
 .msg-action-bar {
   display: flex; gap: 2px; opacity: 0; pointer-events: none;
-  transition: opacity .15s;
-  position: absolute; top: 2px;
+  transition: opacity .15s; align-self: flex-end;
+  flex-shrink: 0; margin-bottom: 4px;
 }
-.mab-user { right: calc(100% + 6px); flex-direction: row-reverse; }
-.mab-bot  { left: calc(100% + 6px); }
-.msg-group { position: relative; }
+.mab-user { margin-right: 4px; order: -1; } /* 말풍선 왼쪽 */
+.mab-bot  { margin-left: 4px; }             /* 말풍선 오른쪽 */
 .msg-group:hover .msg-action-bar,
 .msg-action-bar.visible { opacity: 1; pointer-events: auto; }
 
