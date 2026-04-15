@@ -761,6 +761,19 @@ body {
 .ht-row.bot  + .ht-time { padding-left: 30px; }
 .ht-row.user + .ht-time { text-align: right; }
 
+/* 라이브 채팅 검색 하이라이트 */
+.admin-search-hl {
+  background: #fef08a;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.admin-search-hl-active {
+  background: #f97316;
+  color: #fff;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 /* 인쇄 스타일 */
 @media print {
   .sidebar, .topbar, .tab-bar, .filter-bar, .btn, .modal-overlay { display: none !important; }

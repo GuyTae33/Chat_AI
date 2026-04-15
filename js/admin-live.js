@@ -207,14 +207,24 @@ function renderLiveChatPanel(sess) {
     const isUser     = m.role === 'user';
     const isAdminMsg = m.fromAdmin;
 
-    /* 이미지 첨부 패턴 감지 */
+    /* 이미지/파일 첨부 패턴 감지 */
     const imgMatch  = m.content?.match(/^\[이미지\]\n(https?:\/\/\S+)$/);
     const fileMatch = m.content?.match(/^\[파일: ([^\]]+)\]\n(https?:\/\/\S+)$/);
     let bubbleInner;
     if (imgMatch) {
-      bubbleInner = `<img src="${imgMatch[1]}" style="max-width:200px;border-radius:8px;display:block;cursor:pointer;" onclick="window.open('${imgMatch[1]}','_blank','noopener,noreferrer')" onerror="this.style.display='none'">`;
+      const safeUrl = escAttr(imgMatch[1]);
+      bubbleInner = `<img src="${safeUrl}" style="max-width:200px;border-radius:8px;display:block;cursor:pointer;" onclick="window.open('${safeUrl}','_blank','noopener,noreferrer')" onerror="this.style.display='none'">`;
     } else if (fileMatch) {
-      bubbleInner = `📎 <a href="${fileMatch[2]}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">${escAdmin(fileMatch[1])}</a>`;
+      const fname = fileMatch[1];
+      const furl  = fileMatch[2];
+      const ext   = fname.split('.').pop().toLowerCase();
+      if (/^(mp4|webm|ogg|mov)$/.test(ext)) {
+        bubbleInner = `<video src="${escAttr(furl)}" controls preload="metadata" style="max-width:220px;border-radius:8px;display:block;"></video>`;
+      } else if (/^(mp3|wav|ogg|m4a|aac)$/.test(ext)) {
+        bubbleInner = `<audio src="${escAttr(furl)}" controls preload="metadata" style="max-width:220px;display:block;"></audio>`;
+      } else {
+        bubbleInner = `📎 <a href="${escAttr(furl)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">${escAdmin(fname)}</a>`;
+      }
     } else {
       bubbleInner = (isAdminMsg ? '<span style="font-size:10px;color:#7c3aed;font-weight:700;display:block;margin-bottom:3px;">담당자</span>' : '') + escAdmin(m.content);
     }
@@ -231,6 +241,12 @@ function renderLiveChatPanel(sess) {
   }).join('');
 
   if (wasAtBottom) msgs.scrollTop = msgs.scrollHeight;
+
+  /* 검색 중이면 하이라이트 재적용 */
+  if (_adminSearchOpen) {
+    const inp = document.getElementById('adminSearchInput');
+    if (inp?.value.trim()) runAdminSearch(inp.value.trim());
+  }
 
   const input      = document.getElementById('liveInput');
   const sendBtn    = document.getElementById('liveSendBtn');
@@ -366,9 +382,17 @@ function refreshAdminSendBtn() {
  */
 async function sendAdminMsg() {
   const input  = document.getElementById('liveInput');
-  const text   = input?.value.trim() || '';
+  let text     = input?.value.trim() || '';
   const hasPending = !!adminPendingFile;
   if ((!text && !hasPending) || !liveSelectedId || !liveAdminMode) return;
+
+  /* 답장 인용 텍스트 앞에 붙이기 */
+  if (_adminReplyContent && text) {
+    const roleLabel = ''; // 서버에 그냥 텍스트로 전송 (UI에서만 구분)
+    const preview   = _adminReplyContent.length > 40 ? _adminReplyContent.slice(0, 40) + '…' : _adminReplyContent;
+    text = `[답장: ${preview}]\n${text}`;
+  }
+  clearAdminReplyBar();
 
   input.value    = '';
   input.disabled = true;
@@ -437,6 +461,123 @@ function initAdminPaste() {
   });
 }
 
+/* ── admin 답장 바 ── */
+let _adminReplyContent = null;
+
+function showAdminReplyBar(role, content) {
+  _adminReplyContent = content;
+  const bar     = document.getElementById('adminReplyBar');
+  const label   = document.getElementById('adminReplyLabel');
+  const preview = document.getElementById('adminReplyPreview');
+  if (!bar) return;
+  const roleLabel = role === 'user' ? '고객' : role === 'admin' ? '담당자' : 'AI';
+  label.textContent   = roleLabel + '에게 답장';
+  preview.textContent = content.length > 60 ? content.slice(0, 60) + '…' : content;
+  bar.style.display = 'flex';
+  document.getElementById('liveInput')?.focus();
+}
+
+function clearAdminReplyBar() {
+  _adminReplyContent = null;
+  const bar = document.getElementById('adminReplyBar');
+  if (bar) bar.style.display = 'none';
+}
+
+/* ── admin 채팅 검색 ── */
+let _adminSearchMatches = [];
+let _adminSearchIdx     = -1;
+let _adminSearchOpen    = false;
+
+function toggleAdminSearch() {
+  _adminSearchOpen ? closeAdminSearch() : openAdminSearch();
+}
+
+function openAdminSearch() {
+  _adminSearchOpen = true;
+  const bar = document.getElementById('adminSearchBar');
+  if (bar) { bar.style.display = 'flex'; }
+  document.getElementById('adminSearchInput')?.focus();
+}
+
+function closeAdminSearch() {
+  _adminSearchOpen = false;
+  clearAdminSearchHighlights();
+  _adminSearchMatches = [];
+  _adminSearchIdx = -1;
+  const bar = document.getElementById('adminSearchBar');
+  if (bar) bar.style.display = 'none';
+  const inp = document.getElementById('adminSearchInput');
+  if (inp) inp.value = '';
+  updateAdminSearchCount(0, 0);
+}
+
+function initAdminSearch() {
+  const inp  = document.getElementById('adminSearchInput');
+  const prev = document.getElementById('adminSearchPrev');
+  const next = document.getElementById('adminSearchNext');
+  const cls  = document.getElementById('adminSearchClose');
+  if (!inp) return;
+  inp.addEventListener('input', () => runAdminSearch(inp.value.trim()));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); stepAdminSearch(e.shiftKey ? -1 : 1); }
+    if (e.key === 'Escape') closeAdminSearch();
+  });
+  prev?.addEventListener('click', () => stepAdminSearch(-1));
+  next?.addEventListener('click', () => stepAdminSearch(1));
+  cls?.addEventListener('click', closeAdminSearch);
+}
+
+function runAdminSearch(query) {
+  clearAdminSearchHighlights();
+  _adminSearchMatches = [];
+  _adminSearchIdx = -1;
+  if (!query) { updateAdminSearchCount(0, 0); return; }
+  const bubbles = document.querySelectorAll('#liveMsgs [data-role]');
+  const lq = query.toLowerCase();
+  bubbles.forEach(row => {
+    /* 텍스트 노드만 있는 bubble div 찾기 */
+    const bubble = row.querySelector('div[style*="border-radius"]');
+    if (!bubble) return;
+    const text = bubble.textContent;
+    if (!text.toLowerCase().includes(lq)) return;
+    bubble.innerHTML = bubble.innerHTML.replace(
+      new RegExp(escAdminReg(query), 'gi'),
+      m => `<mark class="admin-search-hl">${m}</mark>`
+    );
+    bubble.querySelectorAll('.admin-search-hl').forEach(m => _adminSearchMatches.push(m));
+  });
+  updateAdminSearchCount(_adminSearchMatches.length > 0 ? 1 : 0, _adminSearchMatches.length);
+  if (_adminSearchMatches.length > 0) { _adminSearchIdx = 0; scrollToAdminMatch(0); }
+}
+
+function stepAdminSearch(dir) {
+  if (!_adminSearchMatches.length) return;
+  _adminSearchMatches[_adminSearchIdx]?.classList.remove('admin-search-hl-active');
+  _adminSearchIdx = (_adminSearchIdx + dir + _adminSearchMatches.length) % _adminSearchMatches.length;
+  _adminSearchMatches[_adminSearchIdx]?.classList.add('admin-search-hl-active');
+  scrollToAdminMatch(_adminSearchIdx);
+  updateAdminSearchCount(_adminSearchIdx + 1, _adminSearchMatches.length);
+}
+
+function scrollToAdminMatch(idx) {
+  _adminSearchMatches[idx]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+function clearAdminSearchHighlights() {
+  document.querySelectorAll('#liveMsgs .admin-search-hl').forEach(el => {
+    el.outerHTML = el.textContent;
+  });
+}
+
+function updateAdminSearchCount(cur, total) {
+  const el = document.getElementById('adminSearchCount');
+  if (el) el.textContent = total > 0 ? `${cur} / ${total}` : (total === 0 && cur === 0 ? '결과없음' : '');
+}
+
+function escAdminReg(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /* ── admin 메시지 우클릭 컨텍스트 메뉴 ── */
 let _adminCtxMenu = null;
 
@@ -490,13 +631,8 @@ function showAdminCtxMenu(x, y, role, content) {
       });
       showToast('✅ 복사됨', 'success');
     } else if (action === 'reply') {
-      const input = document.getElementById('liveInput');
-      if (!input || !liveAdminMode) { showToast('난입 후 답장 가능합니다', 'info'); return; }
-      const preview = content.length > 40 ? content.slice(0, 40) + '…' : content;
-      const label = role === 'user' ? '고객' : role === 'admin' ? '담당자' : 'AI';
-      input.value = `[${label}: ${preview}]\n` + input.value;
-      input.focus();
-      refreshAdminSendBtn();
+      if (!liveAdminMode) { showToast('난입 후 답장 가능합니다', 'info'); return; }
+      showAdminReplyBar(role, content);
     }
   });
 
