@@ -223,10 +223,12 @@
             <div style="font-size:15px;font-weight:700;color:#6b7280;" id="livePanelTitle">세션을 선택하세요</div>
             <div style="font-size:12px;color:#9ca3af;margin-top:2px;" id="livePanelMeta">왼쪽 목록에서 상담 세션을 클릭하면 대화 내용이 표시됩니다</div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;" id="livePanelActions">
-            <!-- 버튼들은 세션 선택 후 표시 -->
-            <button id="adminSearchToggleBtn" onclick="toggleAdminSearch()" title="채팅 검색"
-              style="width:34px;height:34px;border-radius:8px;border:1px solid #d1d5db;background:#f9fafb;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🔍</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div id="livePanelActions" style="display:flex;gap:8px;">
+              <!-- 버튼들은 세션 선택 후 표시 -->
+            </div>
+            <button onclick="toggleAdminSearch()" title="채팅 검색"
+              style="width:34px;height:34px;border-radius:8px;border:1px solid #d1d5db;background:#f9fafb;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">🔍</button>
           </div>
         </div>
 

@@ -207,26 +207,35 @@ function renderLiveChatPanel(sess) {
     const isUser     = m.role === 'user';
     const isAdminMsg = m.fromAdmin;
 
+    /* 답장 인용 패턴 감지 */
+    const replyMatch = m.content?.match(/^\[답장: (.+?)\]\n([\s\S]*)$/);
+    let replyQuoteHtml = '';
+    let rawContent = m.content || '';
+    if (replyMatch) {
+      replyQuoteHtml = `<div style="background:rgba(0,0,0,.08);border-left:3px solid rgba(0,0,0,.25);border-radius:6px;padding:4px 8px;margin-bottom:5px;font-size:11.5px;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escAdmin(replyMatch[1])}</div>`;
+      rawContent = replyMatch[2];
+    }
+
     /* 이미지/파일 첨부 패턴 감지 */
-    const imgMatch  = m.content?.match(/^\[이미지\]\n(https?:\/\/\S+)$/);
-    const fileMatch = m.content?.match(/^\[파일: ([^\]]+)\]\n(https?:\/\/\S+)$/);
+    const imgMatch  = rawContent.match(/^\[이미지\]\n(https?:\/\/\S+)$/);
+    const fileMatch = rawContent.match(/^\[파일: ([^\]]+)\]\n(https?:\/\/\S+)$/);
     let bubbleInner;
     if (imgMatch) {
       const safeUrl = escAttr(imgMatch[1]);
-      bubbleInner = `<img src="${safeUrl}" style="max-width:200px;border-radius:8px;display:block;cursor:pointer;" onclick="window.open('${safeUrl}','_blank','noopener,noreferrer')" onerror="this.style.display='none'">`;
+      bubbleInner = replyQuoteHtml + `<img src="${safeUrl}" style="max-width:200px;border-radius:8px;display:block;cursor:pointer;" onclick="window.open('${safeUrl}','_blank','noopener,noreferrer')" onerror="this.style.display='none'">`;
     } else if (fileMatch) {
       const fname = fileMatch[1];
       const furl  = fileMatch[2];
       const ext   = fname.split('.').pop().toLowerCase();
       if (/^(mp4|webm|ogg|mov)$/.test(ext)) {
-        bubbleInner = `<video src="${escAttr(furl)}" controls preload="metadata" style="max-width:220px;border-radius:8px;display:block;"></video>`;
+        bubbleInner = replyQuoteHtml + `<video src="${escAttr(furl)}" controls preload="metadata" style="max-width:220px;border-radius:8px;display:block;"></video>`;
       } else if (/^(mp3|wav|ogg|m4a|aac)$/.test(ext)) {
-        bubbleInner = `<audio src="${escAttr(furl)}" controls preload="metadata" style="max-width:220px;display:block;"></audio>`;
+        bubbleInner = replyQuoteHtml + `<audio src="${escAttr(furl)}" controls preload="metadata" style="max-width:220px;display:block;"></audio>`;
       } else {
-        bubbleInner = `📎 <a href="${escAttr(furl)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">${escAdmin(fname)}</a>`;
+        bubbleInner = replyQuoteHtml + `📎 <a href="${escAttr(furl)}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">${escAdmin(fname)}</a>`;
       }
     } else {
-      bubbleInner = (isAdminMsg ? '<span style="font-size:10px;color:#7c3aed;font-weight:700;display:block;margin-bottom:3px;">담당자</span>' : '') + escAdmin(m.content);
+      bubbleInner = replyQuoteHtml + (isAdminMsg ? '<span style="font-size:10px;color:#7c3aed;font-weight:700;display:block;margin-bottom:3px;">담당자</span>' : '') + escAdmin(rawContent);
     }
 
     const encodedContent = encodeURIComponent(m.content || '');
