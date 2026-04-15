@@ -416,5 +416,5 @@ function switchTab(tab) {
    앱 초기화
 ================================================================ */
 
-checkServer();
+checkServer().then(() => startBgPolling());
 setInterval(checkServer, 30000);

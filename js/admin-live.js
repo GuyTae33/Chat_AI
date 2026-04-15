@@ -3,16 +3,43 @@
 ================================================================ */
 
 /**
- * 라이브 세션 목록 폴링 시작 (탭 진입 시)
+ * 백그라운드 세션 카운트 폴링 (항상 실행, 5초마다)
+ * — 라이브 탭 밖에서도 새 손님 알림 뱃지 유지
  */
-function startLivePolling() {
-  if (livePollTimer) return;
-  fetchLiveSessions();
-  livePollTimer = setInterval(fetchLiveSessions, 3000);
+function startBgPolling() {
+  if (bgPollTimer) return;
+  bgPollTimer = setInterval(async () => {
+    if (!serverOnline) return;
+    try {
+      const res = await fetch(`${SERVER}/api/admin/sessions`, { headers: adminHeaders() });
+      if (!res.ok) return;
+      const data = await res.json();
+      const count = (data.sessions || []).length;
+      const badge = document.getElementById('liveBadge');
+      const countEl = document.getElementById('liveCount');
+      if (badge) badge.style.display = count > 0 ? 'inline' : 'none';
+      if (countEl) countEl.textContent = count + '개 세션';
+    } catch { /* 무시 */ }
+  }, 5000);
+}
+
+function stopBgPolling() {
+  clearInterval(bgPollTimer);
+  bgPollTimer = null;
 }
 
 /**
- * 라이브 세션 목록 폴링 중단 (탭 이탈 시)
+ * 라이브 세션 목록 폴링 시작 (탭 진입 시) — 1초 간격
+ */
+function startLivePolling() {
+  if (livePollTimer) return;
+  stopBgPolling(); // live 탭에선 빠른 폴링이 대신함
+  fetchLiveSessions();
+  livePollTimer = setInterval(fetchLiveSessions, 1000);
+}
+
+/**
+ * 라이브 세션 목록 폴링 중단 (탭 이탈 시) — 백그라운드 폴링으로 전환
  */
 function stopLivePolling() {
   clearInterval(livePollTimer);
@@ -21,6 +48,7 @@ function stopLivePolling() {
   liveMsgPollTimer = null;
   liveSelectedId   = null;
   liveAdminMode    = false;
+  startBgPolling(); // 탭 이탈 후에도 알림 뱃지 유지
 }
 
 /**
@@ -111,7 +139,7 @@ async function selectLiveSession(sessionId) {
   // await 동안 다른 세션이 선택됐으면 타이머 설정하지 않음 (stale 방지)
   if (liveSelectedId !== sessionId) return;
 
-  liveMsgPollTimer = setInterval(fetchLiveSessionMsgs, 2000);
+  liveMsgPollTimer = setInterval(fetchLiveSessionMsgs, 1000);
   fetchLiveSessions();
 }
 

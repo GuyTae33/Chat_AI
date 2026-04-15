@@ -27,6 +27,7 @@ let liveSelectedId   = null;   // 현재 선택된 세션 ID
 let liveAdminMode    = false;  // 현재 난입 중인지
 let livePollTimer    = null;   // 세션 목록 폴링 타이머
 let liveMsgPollTimer = null;   // 선택된 세션 메시지 폴링 타이머
+let bgPollTimer      = null;   // 백그라운드 세션 카운트 폴링 타이머 (탭 무관 항상 실행)
 
 
 /* ================================================================
