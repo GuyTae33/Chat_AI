@@ -443,9 +443,12 @@ async function appendLinkPreviews(container, text) {
       card.target = '_blank';
       card.rel = 'noopener noreferrer';
       card.innerHTML =
+        (d.image ? `<img class="lp-img" src="${esc(d.image)}" alt="" loading="lazy" onerror="this.remove()">` : '') +
+        `<div class="lp-text">` +
         `<div class="lp-domain">${esc(d.domain || new URL(url).hostname)}</div>` +
         (d.title       ? `<div class="lp-title">${esc(d.title)}</div>`       : '') +
-        (d.description ? `<div class="lp-desc">${esc(d.description)}</div>`  : '');
+        (d.description ? `<div class="lp-desc">${esc(d.description)}</div>`  : '') +
+        `</div>`;
       container.appendChild(card);
       scrollBottom();
     } catch { /* 무시 */ }
@@ -602,6 +605,11 @@ export function appendDateSep(text) {
 /* ── 메시지 목록 초기화 ── */
 export function clearMessages() {
   $msgs.innerHTML = '';
+}
+
+/* 상담원이 읽음 → 모든 읽음 "1" 제거 */
+export function clearReadReceipts() {
+  $msgs.querySelectorAll('.read-receipt').forEach(el => el.remove());
 }
 
 /* ================================================================

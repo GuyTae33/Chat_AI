@@ -131,6 +131,7 @@ function getOrCreateSession(sessionId) {
       customerName: null,
       startedAt: new Date(),
       lastActivity: new Date(),
+      lastReadAt: null,       // 상담원이 마지막으로 세션을 열어본 시각
     });
   }
   return sessions.get(sessionId);
@@ -259,9 +260,16 @@ app.get('/api/og', async (req, res) => {
     };
 
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+    const rawImage   = getMeta('og:image', 'twitter:image');
+    // 상대경로 이미지를 절대경로로 변환
+    let image = '';
+    if (rawImage) {
+      try { image = new URL(rawImage, url).href; } catch { image = rawImage; }
+    }
     res.json({
       title:       getMeta('og:title', 'twitter:title') || titleMatch?.[1]?.trim() || '',
       description: getMeta('og:description', 'description', 'twitter:description') || '',
+      image,
       domain:      new URL(url).hostname.replace(/^www\./, ''),
     });
   } catch {
@@ -462,7 +470,7 @@ app.get('/api/session/status', (req, res) => {
   const pending = [...sess.pendingAdminMsgs];
   sess.pendingAdminMsgs = [];
 
-  res.json({ mode: sess.mode, pendingMsgs: pending });
+  res.json({ mode: sess.mode, pendingMsgs: pending, adminLastRead: sess.lastReadAt || null });
 });
 
 // ── 어드민: 활성 세션 목록 ────────────────────────────────────
@@ -487,6 +495,7 @@ app.get('/api/admin/sessions', (req, res) => {
 app.get('/api/admin/session/:id', (req, res) => {
   const sess = sessions.get(req.params.id);
   if (!sess) return res.status(404).json({ error: '세션 없음' });
+  sess.lastReadAt = new Date().toISOString(); // 상담원이 세션을 봤으므로 읽음 처리
   res.json({ session: sess });
 });
 
