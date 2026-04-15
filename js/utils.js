@@ -11,10 +11,14 @@ export function esc(s) {
     .replace(/\n/g, '<br>');
 }
 
-/** 현재 시각 HH:MM 문자열 */
+/** 현재 시각 오전/오후 H:MM 문자열 (카톡 스타일) */
 export function nowStr() {
   const d = new Date();
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const ap = h < 12 ? '오전' : '오후';
+  const h12 = h % 12 || 12;
+  return `${ap} ${h12}:${m}`;
 }
 
 /** 오늘 날짜 'YYYY년 M월 D일' 문자열 */

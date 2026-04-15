@@ -3,6 +3,9 @@
 ================================================================ */
 import { esc, nowStr } from './utils.js';
 
+/* ── 이모티콘 목록 ── */
+const EMOJIS = ['😊','😄','🥰','😅','🤔','😂','🙏','👍','💜','✨','❤️','🎉','👋','😍','😢','🙌','💪','🤩'];
+
 /* ── DOM 참조 (DOMContentLoaded 이후에 초기화) ── */
 let $msgs, $inp, $sendBtn, $quickArea, $banner, $statusTxt;
 let isLoading = false;
@@ -14,6 +17,8 @@ export function initUI() {
   $quickArea = document.getElementById('quickArea');
   $banner    = document.getElementById('banner');
   $statusTxt = document.getElementById('statusText');
+  initEmojiPicker();
+  initAttachBtn();
 }
 
 /* ── 로딩 상태 ── */
@@ -33,9 +38,9 @@ export function autoResize() {
 }
 
 export function getInputValue() { return $inp.value.trim(); }
-export function clearInput() { $inp.value = ''; }
+export function clearInput() { $inp.value = ''; autoResize(); }
 
-/* ── 이벤트 리스너 등록 (chat.js에서 send 콜백 주입) ── */
+/* ── 이벤트 리스너 등록 ── */
 export function initInputListeners(onSend) {
   $inp.addEventListener('input', () => {
     autoResize();
@@ -50,75 +55,228 @@ export function initInputListeners(onSend) {
 /* ── 스크롤 ── */
 export function scrollBottom() { $msgs.scrollTop = $msgs.scrollHeight; }
 
-/* ── 메시지 추가 ── */
+/* ================================================================
+   복사 기능 — 길게 누르기(모바일) / 우클릭(PC)
+================================================================ */
+function showCopyToast(msg = '복사되었습니다') {
+  const existing = document.querySelector('.copy-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'copy-toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 1600);
+}
+
+function copyText(text) {
+  const plain = text.replace(/<br\s*\/?>/gi, '\n').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(plain).then(() => showCopyToast()).catch(() => fallbackCopy(plain));
+  } else {
+    fallbackCopy(plain);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  showCopyToast();
+}
+
+function addContextMenu(el, rawText) {
+  let pressTimer;
+
+  /* 모바일: 600ms 길게 누르기 → 복사 */
+  el.addEventListener('touchstart', () => {
+    pressTimer = setTimeout(() => copyText(rawText), 600);
+  }, { passive: true });
+  el.addEventListener('touchend',  () => clearTimeout(pressTimer), { passive: true });
+  el.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
+
+  /* 데스크탑: 우클릭 → 복사 */
+  el.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    copyText(rawText);
+  });
+}
+
+/* ================================================================
+   메시지 렌더링
+================================================================ */
 export function addMsg(role, text) {
   const clean = text.replace(/```json[\s\S]*?```/g, '').trim();
 
-  const row = document.createElement('div');
-  row.className = `row ${role}`;
-
   if (role === 'bot') {
-    row.innerHTML = `<div class="av">👩‍💼</div>
-      <div class="bubble bot">${esc(clean)}</div>`;
+    /* 문단 기준으로 말풍선 분리 */
+    const parts = clean.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+
+    const group = document.createElement('div');
+    group.className = 'msg-group bot';
+
+    /* 아바타 */
+    const av = document.createElement('div');
+    av.className = 'av';
+    av.textContent = '👩‍💼';
+    group.appendChild(av);
+
+    /* 본문 */
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    /* 발신자 이름 */
+    const sender = document.createElement('div');
+    sender.className = 'msg-sender';
+    sender.textContent = '루마네';
+    body.appendChild(sender);
+
+    /* 말풍선 행 */
+    const bubblesRow = document.createElement('div');
+    bubblesRow.className = 'msg-bubbles-row';
+
+    const bubblesCol = document.createElement('div');
+    bubblesCol.className = 'msg-bubbles';
+
+    for (const part of parts) {
+      const b = document.createElement('div');
+      b.className = 'bubble bot';
+      b.innerHTML = esc(part);
+      bubblesCol.appendChild(b);
+    }
+
+    /* 메타 (시간) */
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    const timeEl = document.createElement('span');
+    timeEl.className = 'msg-time';
+    timeEl.textContent = nowStr();
+    meta.appendChild(timeEl);
+
+    bubblesRow.appendChild(bubblesCol);
+    bubblesRow.appendChild(meta);
+    body.appendChild(bubblesRow);
+    group.appendChild(body);
+
+    $msgs.appendChild(group);
+    addContextMenu(group, clean);
+
   } else {
-    row.innerHTML = `<div class="bubble user">${esc(clean)}</div>`;
+    /* 내 메시지 */
+    const group = document.createElement('div');
+    group.className = 'msg-group user';
+
+    const bubblesRow = document.createElement('div');
+    bubblesRow.className = 'msg-bubbles-row';
+
+    /* 메타: 읽음 "1" + 시간 (말풍선 왼쪽) */
+    const meta = document.createElement('div');
+    meta.className = 'msg-meta';
+
+    const receipt = document.createElement('span');
+    receipt.className = 'read-receipt';
+    receipt.textContent = '1';
+    meta.appendChild(receipt);
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'msg-time';
+    timeEl.textContent = nowStr();
+    meta.appendChild(timeEl);
+
+    const bubblesCol = document.createElement('div');
+    bubblesCol.className = 'msg-bubbles';
+
+    const b = document.createElement('div');
+    b.className = 'bubble user';
+    b.innerHTML = esc(clean);
+    bubblesCol.appendChild(b);
+
+    bubblesRow.appendChild(meta);
+    bubblesRow.appendChild(bubblesCol);
+    group.appendChild(bubblesRow);
+
+    $msgs.appendChild(group);
+    addContextMenu(group, clean);
   }
 
-  const time = document.createElement('div');
-  time.className = `msg-time ${role}`;
-  time.textContent = nowStr();
-
-  $msgs.appendChild(row);
-  $msgs.appendChild(time);
   scrollBottom();
 }
 
-/* ── 예시 이미지 메시지 추가 ── */
+/* ── 예시 이미지 메시지 ── */
 export function addImageMsg(imgUrl, label) {
-  const row = document.createElement('div');
-  row.className = 'row bot';
+  const group = document.createElement('div');
+  group.className = 'msg-group bot';
 
   const av = document.createElement('div');
   av.className = 'av';
   av.textContent = '👩‍💼';
-  row.appendChild(av);
+  group.appendChild(av);
 
-  const wrap = document.createElement('div');
-  wrap.style.display = 'flex';
-  wrap.style.flexDirection = 'column';
+  const body = document.createElement('div');
+  body.className = 'msg-body';
+
+  const sender = document.createElement('div');
+  sender.className = 'msg-sender';
+  sender.textContent = '루마네';
+  body.appendChild(sender);
+
+  const bubblesRow = document.createElement('div');
+  bubblesRow.className = 'msg-bubbles-row';
+
+  const bubblesCol = document.createElement('div');
+  bubblesCol.className = 'msg-bubbles';
 
   const img = document.createElement('img');
   img.src = imgUrl;
   img.className = 'img-example';
   img.alt = label || '드레스룸 예시 이미지';
   img.onclick = () => window.open(imgUrl, '_blank', 'noopener,noreferrer');
-  img.onerror = () => { wrap.remove(); };
+  img.onerror = () => { group.remove(); };
+  bubblesCol.appendChild(img);
 
-  const lbl = document.createElement('div');
-  lbl.className = 'img-example-label';
-  lbl.textContent = label || '📐 고객님 구성과 유사한 예시입니다';
+  if (label) {
+    const lbl = document.createElement('div');
+    lbl.className = 'img-example-label';
+    lbl.textContent = label;
+    bubblesCol.appendChild(lbl);
+  }
 
-  wrap.appendChild(img);
-  wrap.appendChild(lbl);
-  row.appendChild(wrap);
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  const timeEl = document.createElement('span');
+  timeEl.className = 'msg-time';
+  timeEl.textContent = nowStr();
+  meta.appendChild(timeEl);
 
-  $msgs.appendChild(row);
-  const time = document.createElement('div');
-  time.className = 'msg-time bot';
-  time.textContent = nowStr();
-  $msgs.appendChild(time);
+  bubblesRow.appendChild(bubblesCol);
+  bubblesRow.appendChild(meta);
+  body.appendChild(bubblesRow);
+  group.appendChild(body);
+
+  $msgs.appendChild(group);
   scrollBottom();
 }
 
 /* ── 타이핑 인디케이터 ── */
 export function showTyping() {
+  if (document.getElementById('typing')) return;
   const el = document.createElement('div');
   el.className = 'typing';
   el.id = 'typing';
-  el.innerHTML = `<div class="av">👩‍💼</div>
-    <div class="typing-bubble">
-      <div class="td"></div><div class="td"></div><div class="td"></div>
-    </div>`;
+  el.innerHTML =
+    `<div class="av">👩‍💼</div>` +
+    `<div class="typing-body">` +
+      `<div class="typing-name">루마네</div>` +
+      `<div class="typing-bubble">` +
+        `<div class="td"></div><div class="td"></div><div class="td"></div>` +
+      `</div>` +
+    `</div>`;
   $msgs.appendChild(el);
   scrollBottom();
 }
@@ -148,7 +306,6 @@ export function setQuick(labels, isChoice = false) {
     b.textContent = label;
     b.onclick = () => {
       $inp.value = label;
-      // chat.js에서 등록한 send를 호출하기 위해 sendBtn click 이벤트 발생
       $sendBtn.click();
     };
     wrap.appendChild(b);
@@ -157,7 +314,7 @@ export function setQuick(labels, isChoice = false) {
   $quickArea.appendChild(wrap);
 }
 
-/* ── AI 응답에서 퀵 버튼 힌트 자동 감지 ── */
+/* ── AI 응답에서 퀵 버튼 자동 감지 ── */
 export function updateQuickFromText(text) {
   if (/(드레스룸\s*형태|형태.*어떻게|1자형|ㄱ자형|ㄷ자형|11자형)/.test(text)) {
     setQuick(['1자형', 'ㄱ자형', 'ㄷ자형', '11자형'], true); return;
@@ -201,4 +358,46 @@ export function appendDateSep(text) {
 /* ── 메시지 목록 초기화 ── */
 export function clearMessages() {
   $msgs.innerHTML = '';
+}
+
+/* ================================================================
+   이모티콘 피커
+================================================================ */
+function initEmojiPicker() {
+  const picker = document.getElementById('emojiPicker');
+  const btn    = document.getElementById('emojiBtn');
+  if (!picker || !btn) return;
+
+  /* 이모티콘 버튼 생성 */
+  EMOJIS.forEach(emoji => {
+    const item = document.createElement('button');
+    item.className = 'emoji-item';
+    item.textContent = emoji;
+    item.addEventListener('click', () => {
+      const pos = $inp.selectionStart ?? $inp.value.length;
+      const val = $inp.value;
+      $inp.value = val.slice(0, pos) + emoji + val.slice(pos);
+      $inp.selectionStart = $inp.selectionEnd = pos + emoji.length;
+      $inp.dispatchEvent(new Event('input'));
+      $inp.focus();
+      picker.classList.remove('open');
+    });
+    picker.appendChild(item);
+  });
+
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    picker.classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => picker.classList.remove('open'));
+}
+
+/* ── 파일 첨부 버튼 (준비 중 안내) ── */
+function initAttachBtn() {
+  const btn = document.getElementById('attachBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    showCopyToast('파일 첨부는 준비 중입니다 😊');
+  });
 }
