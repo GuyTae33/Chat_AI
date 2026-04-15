@@ -240,6 +240,28 @@ app.get('/api/og', async (req, res) => {
   if (!url || !/^https?:\/\//i.test(url)) {
     return res.status(400).json({ error: 'url 파라미터가 필요합니다' });
   }
+
+  // YouTube: oEmbed API로 제목 + 썸네일 가져오기
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) {
+    try {
+      const videoId = ytMatch[1];
+      const oEmbed  = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (oEmbed.ok) {
+        const d = await oEmbed.json();
+        return res.json({
+          title:       d.title || '',
+          description: d.author_name ? `${d.author_name} · YouTube` : 'YouTube',
+          image:       `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+          domain:      'youtube.com',
+        });
+      }
+    } catch { /* oEmbed 실패 시 일반 방식으로 폴백 */ }
+  }
+
   try {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LumaneBot/1.0)' },
