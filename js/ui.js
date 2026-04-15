@@ -6,6 +6,20 @@ import { SERVER } from './config.js';
 
 const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/g;
 
+/* ── 메시지 ID 카운터 ── */
+let _midSeq = 0;
+export function allocMid() { return ++_midSeq; }
+
+/* ── 액션 콜백 (chat.js에서 주입) ── */
+let _onReply  = null;
+let _onEdit   = null;
+let _onDelete = null;
+export function setMsgActionHandlers({ onReply, onEdit, onDelete }) {
+  _onReply  = onReply;
+  _onEdit   = onEdit;
+  _onDelete = onDelete;
+}
+
 /* ── 이모티콘 목록 ── */
 const EMOJIS = ['😊','😄','🥰','😅','🤔','😂','🙏','👍','💜','✨','❤️','🎉','👋','😍','😢','🙌','💪','🤩'];
 
@@ -114,19 +128,64 @@ function fallbackCopy(text) {
 
 function addContextMenu(el, rawText) {
   let pressTimer;
-
-  /* 모바일: 600ms 길게 누르기 → 복사 */
+  /* 모바일: 600ms 길게 누르기 → 액션바 표시 */
   el.addEventListener('touchstart', () => {
-    pressTimer = setTimeout(() => copyText(rawText), 600);
+    pressTimer = setTimeout(() => {
+      el.querySelector('.msg-action-bar')?.classList.add('visible');
+    }, 600);
   }, { passive: true });
   el.addEventListener('touchend',  () => clearTimeout(pressTimer), { passive: true });
   el.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
 
-  /* 데스크탑: 우클릭 → 복사 */
+  /* 데스크탑: 우클릭 → 복사 (기존 동작 유지) */
   el.addEventListener('contextmenu', e => {
     e.preventDefault();
     copyText(rawText);
   });
+}
+
+/* ── 메시지 액션바 생성 ── */
+function makeActionBar(mid, role, text) {
+  const bar = document.createElement('div');
+  bar.className = 'msg-action-bar' + (role === 'user' ? ' mab-user' : ' mab-bot');
+
+  const btns = [
+    { label: '↩', title: '답장', action: 'reply' },
+    { label: '📋', title: '복사', action: 'copy' },
+  ];
+  if (role === 'user') {
+    btns.push({ label: '✏️', title: '수정', action: 'edit' });
+    btns.push({ label: '🗑', title: '삭제', action: 'delete' });
+  }
+
+  btns.forEach(({ label, title, action }) => {
+    const btn = document.createElement('button');
+    btn.className = 'mab-btn';
+    btn.textContent = label;
+    btn.title = title;
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      bar.classList.remove('visible');
+      if (action === 'copy')   copyText(text);
+      if (action === 'reply'  && _onReply)  _onReply(mid, role, text);
+      if (action === 'edit'   && _onEdit)   _onEdit(mid, text);
+      if (action === 'delete' && _onDelete) _onDelete(mid);
+    });
+    bar.appendChild(btn);
+  });
+
+  return bar;
+}
+
+/* ── 답장 인용 DOM (ui.js 내부용) ── */
+function buildQuoteDom(replyTo, isUserBubble) {
+  if (!replyTo) return null;
+  const q = document.createElement('div');
+  q.className = 'reply-quote' + (isUserBubble ? ' reply-quote-user' : '');
+  const who = replyTo.role === 'user' ? '내 메시지' : '루마네';
+  const preview = replyTo.text.length > 50 ? replyTo.text.slice(0, 50) + '…' : replyTo.text;
+  q.innerHTML = `<span class="rq-who">${esc(who)}</span><span class="rq-text">${esc(preview)}</span>`;
+  return q;
 }
 
 /* ================================================================
@@ -151,6 +210,23 @@ function renderBubbleContent(text) {
   const fileMatch = text.match(/^\[파일: ([^\]]+)\]\n(https?:\/\/\S+)$/);
   if (fileMatch) {
     const [, name, url] = fileMatch;
+    const ext = name.split('.').pop().toLowerCase();
+
+    /* 동영상 */
+    if (/^(mp4|webm|ogg|mov)$/.test(ext)) {
+      const video = document.createElement('video');
+      video.src = url; video.controls = true; video.preload = 'metadata';
+      video.style.cssText = 'max-width:260px;border-radius:10px;display:block;';
+      return video;
+    }
+    /* 음성 */
+    if (/^(mp3|wav|ogg|m4a|aac)$/.test(ext)) {
+      const audio = document.createElement('audio');
+      audio.src = url; audio.controls = true; audio.preload = 'metadata';
+      audio.style.cssText = 'max-width:260px;display:block;';
+      return audio;
+    }
+
     const wrap = document.createElement('div');
     wrap.innerHTML = `📎 <a href="${url}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">${esc(name)}</a>`;
     return wrap;
@@ -161,8 +237,9 @@ function renderBubbleContent(text) {
 /* ================================================================
    메시지 렌더링
 ================================================================ */
-export function addMsg(role, text) {
+export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
   const clean = text.replace(/```json[\s\S]*?```/g, '').trim();
+  const msgMid = mid ?? allocMid();
 
   if (role === 'bot') {
     /* 루마네가 읽었으므로 이전 읽음 "1" 모두 제거 */
@@ -173,6 +250,7 @@ export function addMsg(role, text) {
 
     const group = document.createElement('div');
     group.className = 'msg-group bot';
+    group.dataset.mid = msgMid;
 
     /* 아바타 */
     const av = document.createElement('div');
@@ -196,6 +274,12 @@ export function addMsg(role, text) {
 
     const bubblesCol = document.createElement('div');
     bubblesCol.className = 'msg-bubbles';
+
+    /* 답장 인용 */
+    if (replyTo) {
+      const q = buildQuoteDom(replyTo, false);
+      if (q) bubblesCol.appendChild(q);
+    }
 
     for (const part of parts) {
       const special = renderBubbleContent(part);
@@ -222,6 +306,9 @@ export function addMsg(role, text) {
     body.appendChild(bubblesRow);
     group.appendChild(body);
 
+    /* 액션바 (답장) */
+    group.appendChild(makeActionBar(msgMid, 'bot', clean));
+
     $msgs.appendChild(group);
     addContextMenu(group, clean);
     appendLinkPreviews(bubblesCol, clean);
@@ -230,6 +317,7 @@ export function addMsg(role, text) {
     /* 내 메시지 */
     const group = document.createElement('div');
     group.className = 'msg-group user';
+    group.dataset.mid = msgMid;
 
     const bubblesRow = document.createElement('div');
     bubblesRow.className = 'msg-bubbles-row';
@@ -251,6 +339,12 @@ export function addMsg(role, text) {
     const bubblesCol = document.createElement('div');
     bubblesCol.className = 'msg-bubbles';
 
+    /* 답장 인용 */
+    if (replyTo) {
+      const q = buildQuoteDom(replyTo, true);
+      if (q) bubblesCol.appendChild(q);
+    }
+
     const special = renderBubbleContent(clean);
     if (special) {
       bubblesCol.appendChild(special);
@@ -264,6 +358,9 @@ export function addMsg(role, text) {
     bubblesRow.appendChild(meta);
     bubblesRow.appendChild(bubblesCol);
     group.appendChild(bubblesRow);
+
+    /* 액션바 (답장/수정/삭제) */
+    group.appendChild(makeActionBar(msgMid, 'user', clean));
 
     $msgs.appendChild(group);
     addContextMenu(group, clean);

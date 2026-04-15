@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="X-Frame-Options" content="DENY" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://lumane-server.onrender.com; img-src 'self' data: blob: https://lumane-server.onrender.com; frame-ancestors 'none';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://lumane-server.onrender.com; img-src 'self' data: blob: https://lumane-server.onrender.com; media-src 'self' blob: https://lumane-server.onrender.com; frame-ancestors 'none';" />
   <title>케이트블랑 드레스룸 · AI 상담</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -56,7 +56,17 @@
     <button class="h-collect-btn" onclick="toggleCollect()" id="collectBtn">
       📋 수집현황
     </button>
+    <button class="h-search-btn" onclick="toggleSearch()" title="채팅 검색">🔍</button>
   </header>
+
+  <!-- 채팅 검색 바 -->
+  <div class="search-bar" id="searchBar" style="display:none">
+    <input class="search-input" id="searchInput" type="text" placeholder="메시지 검색…" autocomplete="off" />
+    <span class="search-count" id="searchCount"></span>
+    <button class="search-nav" id="searchPrev" title="이전">∧</button>
+    <button class="search-nav" id="searchNext" title="다음">∨</button>
+    <button class="search-close" id="searchClose">✕</button>
+  </div>
 
   <!-- 이전 상담 이력 드로어 -->
   <div class="history-drawer" id="historyDrawer">
@@ -220,6 +230,10 @@
       <div class="date-sep" id="dateSep"></div>
     </div>
     <div class="quick-area" id="quickArea"></div>
+    <!-- 답장 바 -->
+    <div class="reply-bar" id="replyBar" style="display:none"></div>
+    <!-- 수정 중 바 -->
+    <div class="edit-bar" id="editBar" style="display:none"></div>
     <div class="attach-bar" id="attachBar" style="display:none"></div>
     <div class="input-bar">
       <button class="inp-side-btn" id="attachBtn" title="파일 첨부">＋</button>
@@ -257,7 +271,7 @@
 </div>
 </div>
 
-<input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
+<input type="file" id="fileInput" accept="image/*,video/*,audio/*,application/pdf" style="display:none">
 <script type="module" src="js/chat.js"></script>
 </body>
 </html>

@@ -18,11 +18,15 @@ import {
   initUI, setLoading, getIsLoading,
   addMsg, addImageMsg, addFileMsg, initFileInput,
   uploadFilePending, getPendingFile,
+  setMsgActionHandlers, allocMid,
   setQuick, updateQuickFromText,
   setBanner, setStatusText,
   initInputListeners, initDateSep, appendDateSep,
   clearMessages, clearInput,
 } from './ui.js';
+import { getPendingReply, setPendingReply, clearPendingReply } from './reply.js';
+import { getEditingMid, startEdit, cancelEdit, applyEditToDom, deleteFromDom } from './message-actions.js';
+import { initSearch, toggleSearch, closeSearch } from './search.js';
 import { toggleHistory, showTranscript, continueFromHistory, closeTranscript, setHistoryData } from './history.js';
 import { toggleCollect, updateCollectDrawer, resetCollect } from './collect.js';
 import { showConfirm, confirmBack, confirmSubmit } from './confirm.js';
@@ -222,17 +226,34 @@ function buildConfirmSummary() {
    메시지 전송
 ================================================================ */
 async function send() {
-  const text      = document.getElementById('inp').value.trim();
+  const text       = document.getElementById('inp').value.trim();
   const hasPending = !!getPendingFile();
+  const editingMid = getEditingMid();
   if ((!text && !hasPending) || getIsLoading()) return;
 
-  /* ── 첨부 파일이 있으면 먼저 업로드 & 메시지로 전송 ── */
+  /* ── 수정 모드 ── */
+  if (editingMid && text) {
+    applyEditToDom(editingMid, text);
+    const entry = history.find(m => m.mid === editingMid);
+    if (entry) entry.content = text;
+    saveHistory();
+    cancelEdit();
+    clearInput();
+    return;
+  }
+
+  /* ── 답장 상태 가져오기 ── */
+  const replyTo = getPendingReply();
+  clearPendingReply();
+
+  /* ── 첨부 파일 먼저 업로드 ── */
   if (hasPending) {
     await uploadFilePending(async (url, name, isImage) => {
-      addFileMsg(url, name, isImage);
+      const mid = allocMid();
+      addFileMsg(url, name, isImage, mid);
       const fullUrl = url.startsWith('http') ? url : `${SERVER}${url}`;
       const content = isImage ? `[이미지]\n${fullUrl}` : `[파일: ${name}]\n${fullUrl}`;
-      history.push({ role: 'user', content });
+      history.push({ role: 'user', content, mid });
       if (serverOnline) {
         try {
           await fetch(`${SERVER}/api/chat`, {
@@ -248,8 +269,9 @@ async function send() {
   /* ── 텍스트가 없으면 여기서 종료 ── */
   if (!text) return;
 
-  addMsg('user', text);
-  history.push({ role: 'user', content: text });
+  const mid = allocMid();
+  addMsg('user', text, { mid, replyTo });
+  history.push({ role: 'user', content: text, mid, replyTo: replyTo ?? undefined });
   clearInput();
   setQuick([]);
 
@@ -461,6 +483,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  /* ── 메시지 액션 핸들러 등록 ── */
+  setMsgActionHandlers({
+    onReply: (mid, role, text) => setPendingReply(mid, role, text),
+    onEdit:  (mid, text) => startEdit(mid, text, (t) => {
+      document.getElementById('inp').value = t;
+      document.getElementById('inp').dispatchEvent(new Event('input'));
+      document.getElementById('inp').focus();
+    }),
+    onDelete: (mid) => {
+      deleteFromDom(mid);
+      history = history.filter(m => m.mid !== mid);
+      saveHistory();
+    },
+  });
+
+  /* ── 검색 초기화 ── */
+  initSearch();
+
   /* HTML onclick에서 호출 가능하도록 window에 등록 */
   window.toggleHistory      = toggleHistory;
   window.toggleCollect      = toggleCollect;
@@ -472,6 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.showTranscript     = showTranscript;
   window.continueFromHistory = continueFromHistory;
   window.closeTranscript    = closeTranscript;
+  window.toggleSearch       = toggleSearch;
+  window.closeSearch        = closeSearch;
 
   /* 파일 업로드 초기화 (칩 방식 — 전송 시 send()에서 처리) */
   initFileInput();
@@ -484,7 +526,10 @@ document.addEventListener('DOMContentLoaded', () => {
       /* ── 새로고침 복원: 저장된 대화 화면에 다시 표시 ── */
       history = savedHistory;
       for (const m of savedHistory) {
-        addMsg(m.role === 'assistant' ? 'bot' : 'user', m.content);
+        addMsg(m.role === 'assistant' ? 'bot' : 'user', m.content, {
+          mid: m.mid,
+          replyTo: m.replyTo ?? null,
+        });
       }
       /* 서버 세션에도 재동기화 */
       if (serverOnline) {
