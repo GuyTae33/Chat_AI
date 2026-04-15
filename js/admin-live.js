@@ -9,17 +9,31 @@
 function startBgPolling() {
   if (bgPollTimer) return;
   bgPollTimer = setInterval(async () => {
-    if (!serverOnline) return;
+
+    // ── 오프라인이면 재연결 시도 (Render.com 절전 복귀 대응) ──
+    if (!serverOnline) {
+      try {
+        const r = await fetch(`${SERVER}/api/health`, { signal: AbortSignal.timeout(8000) });
+        if (!r.ok) return;
+        serverOnline = true;
+        document.getElementById('serverBadge').className    = 'server-badge online';
+        document.getElementById('serverStatus').textContent = '서버 연결됨';
+        await loadQuotes();
+      } catch { return; }
+    }
+
+    // ── 세션 카운트 확인 → 라이브 탭 뱃지 업데이트 ──
     try {
       const res = await fetch(`${SERVER}/api/admin/sessions`, { headers: adminHeaders() });
       if (!res.ok) return;
       const data = await res.json();
       const count = (data.sessions || []).length;
-      const badge = document.getElementById('liveBadge');
+      const badge   = document.getElementById('liveBadge');
       const countEl = document.getElementById('liveCount');
-      if (badge) badge.style.display = count > 0 ? 'inline' : 'none';
-      if (countEl) countEl.textContent = count + '개 세션';
+      if (badge)   badge.style.display = count > 0 ? 'inline' : 'none';
+      if (countEl) countEl.textContent  = count + '개 세션';
     } catch { /* 무시 */ }
+
   }, 5000);
 }
 
