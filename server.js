@@ -247,6 +247,11 @@ app.get('/api/og', async (req, res) => {
     });
     const html = await resp.text();
 
+    // HTML 엔티티 디코딩 (&amp; → & 등)
+    const decodeHtml = s => s
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+
     const getMeta = (...names) => {
       for (const n of names) {
         const m = html.match(new RegExp(
@@ -254,24 +259,26 @@ app.get('/api/og', async (req, res) => {
         )) || html.match(new RegExp(
           `<meta[^>]+content=["']([^"'<>]+)["'][^>]+(?:property|name)=["']${n}["']`, 'i'
         ));
-        if (m?.[1]) return m[1].trim();
+        if (m?.[1]) return decodeHtml(m[1].trim());
       }
       return '';
     };
 
     const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
     const rawImage   = getMeta('og:image', 'twitter:image');
-    // 상대경로 이미지를 절대경로로 변환
     let image = '';
     if (rawImage) {
       try { image = new URL(rawImage, url).href; } catch { image = rawImage; }
     }
-    res.json({
-      title:       getMeta('og:title', 'twitter:title') || titleMatch?.[1]?.trim() || '',
-      description: getMeta('og:description', 'description', 'twitter:description') || '',
-      image,
-      domain:      new URL(url).hostname.replace(/^www\./, ''),
-    });
+
+    const title = getMeta('og:title', 'twitter:title') || decodeHtml(titleMatch?.[1]?.trim() || '');
+    const description = getMeta('og:description', 'description', 'twitter:description');
+    const domain = new URL(url).hostname.replace(/^www\./, '');
+
+    // 제목이 URL 자체이거나 없으면 도메인만 표시 (YouTube 등 봇 차단 사이트 대응)
+    const cleanTitle = (title && !title.startsWith('http')) ? title : '';
+
+    res.json({ title: cleanTitle, description, image, domain });
   } catch {
     res.status(500).json({ error: '미리보기를 가져오지 못했습니다' });
   }
