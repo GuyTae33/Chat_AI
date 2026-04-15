@@ -22,7 +22,7 @@ import {
   setQuick, updateQuickFromText,
   setBanner, setStatusText,
   initInputListeners, initDateSep, appendDateSep,
-  clearMessages, clearInput, clearReadReceipts,
+  clearMessages, clearInput,
 } from './ui.js';
 import { getPendingReply, setPendingReply, clearPendingReply } from './reply.js';
 import { getEditingMid, startEdit, cancelEdit, applyEditToDom, deleteFromDom } from './message-actions.js';
@@ -156,9 +156,6 @@ function startPolling() {
         adminMode = false;
         showAdminBanner(false);
       }
-
-      /* 상담원이 채팅을 열어봤으면 읽음 "1" 제거 */
-      if (data.adminLastRead) clearReadReceipts();
 
       /* admin이 보낸 메시지 표시 */
       for (const msg of (data.pendingMsgs || [])) {

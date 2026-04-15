@@ -305,8 +305,6 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
   const msgMid = mid ?? allocMid();
 
   if (role === 'bot') {
-    /* 루마네가 읽었으므로 이전 읽음 "1" 모두 제거 */
-    $msgs.querySelectorAll('.read-receipt').forEach(el => el.remove());
 
     /* 문단 기준으로 말풍선 분리 */
     const parts = clean.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
@@ -385,11 +383,6 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
     /* 메타: 읽음 "1" + 시간 (말풍선 왼쪽) */
     const meta = document.createElement('div');
     meta.className = 'msg-meta';
-
-    const receipt = document.createElement('span');
-    receipt.className = 'read-receipt';
-    receipt.textContent = '1';
-    meta.appendChild(receipt);
 
     const timeEl = document.createElement('span');
     timeEl.className = 'msg-time';
@@ -715,13 +708,9 @@ export function addFileMsg(url, name, isImage) {
 
   const meta = document.createElement('div');
   meta.className = 'msg-meta';
-  const receipt = document.createElement('span');
-  receipt.className = 'read-receipt';
-  receipt.textContent = '1';
   const timeEl = document.createElement('span');
   timeEl.className = 'msg-time';
   timeEl.textContent = nowStr();
-  meta.appendChild(receipt);
   meta.appendChild(timeEl);
 
   const bubblesCol = document.createElement('div');
