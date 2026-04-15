@@ -526,33 +526,49 @@ export function addFileMsg(url, name, isImage) {
   scrollBottom();
 }
 
+/* ── 파일 공통 업로드 처리 ── */
+async function uploadFile(file, onFileSend) {
+  if (file.size > 10 * 1024 * 1024) {
+    showCopyToast('파일은 10MB 이하만 첨부 가능합니다');
+    return;
+  }
+  showCopyToast('업로드 중...');
+  try {
+    const fd = new FormData();
+    /* 클립보드 이미지는 파일명이 없을 수 있어 기본값 지정 */
+    const name = file.name && file.name !== 'image.png' ? file.name : `screenshot-${Date.now()}.png`;
+    fd.append('file', file, name);
+    const r = await fetch(`${SERVER}/api/upload`, { method: 'POST', body: fd });
+    if (!r.ok) throw new Error('업로드 실패');
+    const data = await r.json();
+    if (data.success) onFileSend(data.url, data.name || name, data.isImage);
+  } catch {
+    showCopyToast('업로드에 실패했습니다 😢');
+  }
+}
+
 /* ── 파일 업로드 핸들러 초기화 (chat.js에서 onFileSend 콜백 전달) ── */
 export function initFileInput(onFileSend) {
   const input = document.getElementById('fileInput');
   if (!input) return;
+
+  /* + 버튼으로 파일 선택 */
   input.addEventListener('change', async () => {
     const file = input.files[0];
     if (!file) return;
     input.value = '';
-
-    // 10MB 초과 차단
-    if (file.size > 10 * 1024 * 1024) {
-      showCopyToast('파일은 10MB 이하만 첨부 가능합니다');
-      return;
-    }
-
-    showCopyToast('업로드 중...');
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const r = await fetch(`${SERVER}/api/upload`, { method: 'POST', body: fd });
-      if (!r.ok) throw new Error('업로드 실패');
-      const data = await r.json();
-      if (data.success) {
-        onFileSend(data.url, data.name, data.isImage);
-      }
-    } catch (e) {
-      showCopyToast('업로드에 실패했습니다 😢');
-    }
+    await uploadFile(file, onFileSend);
   });
+
+  /* Ctrl+V 클립보드 붙여넣기 (화면 캡처 등) */
+  if ($inp) {
+    $inp.addEventListener('paste', async (e) => {
+      const items = Array.from(e.clipboardData?.items || []);
+      const imageItem = items.find(item => item.type.startsWith('image/'));
+      if (!imageItem) return; // 이미지 없으면 일반 텍스트 붙여넣기로 처리
+      e.preventDefault();
+      const file = imageItem.getAsFile();
+      if (file) await uploadFile(file, onFileSend);
+    });
+  }
 }
