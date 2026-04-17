@@ -399,6 +399,8 @@ function switchTab(tab) {
   if (tab === 'dashboard') {
     navItems[0].classList.add('active');
     document.getElementById('topbarTitle').textContent = '📊 대시보드';
+    // 대시보드 진입 시 즉시 세션 목록 로드
+    fetchLiveSessions();
   } else if (tab === 'quotes') {
     navItems[1].classList.add('active');
     document.getElementById('topbarTitle').textContent = '📋 견적 목록';

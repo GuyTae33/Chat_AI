@@ -896,33 +896,62 @@ body {
     display: none;
   }
   .live-split.session-selected .live-chat-col {
-    display: flex !important;
+    display: block !important; /* flex → block으로 변경, 자식 절대위치 사용 */
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 150 !important;
+    overflow: hidden;
   }
 
   /* 뒤로가기 버튼 표시 */
   .live-back-btn { display: flex; }
 
-  /* 메시지 영역: 남은 공간 전부 차지, 스크롤 */
-  #liveMsgs {
-    flex: 1 !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
+  /* 헤더: 상단 고정 */
+  .live-split.session-selected #livePanelHeader {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    z-index: 2;
+    background: #fff;
   }
 
-  /* 입력창들: 줄어들지 않도록 고정 */
-  #liveInputArea,
-  #adminReplyBar,
-  #adminAttachBar,
-  #templatePanel,
-  #adminSearchBar {
-    flex-shrink: 0 !important;
+  /* 검색바: 헤더 바로 아래 */
+  .live-split.session-selected #adminSearchBar {
+    position: absolute;
+    top: 57px; left: 0; right: 0;
+    z-index: 2;
+    background: #fff;
   }
 
-  /* 입력창 폰트/패딩 모바일 최적화 */
-  #liveInputArea {
+  /* 입력창: 하단 고정 */
+  .live-split.session-selected #liveInputArea {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 2;
+    background: #fff;
+    border-top: 1px solid #e5e7eb;
     padding: 8px 10px;
-    gap: 6px;
   }
+
+  /* 답장/첨부 바: 입력창 바로 위 */
+  .live-split.session-selected #adminReplyBar,
+  .live-split.session-selected #adminAttachBar,
+  .live-split.session-selected #templatePanel {
+    position: absolute;
+    bottom: 58px; left: 0; right: 0;
+    z-index: 2;
+  }
+
+  /* 메시지 영역: 헤더 아래 ~ 입력창 위 */
+  .live-split.session-selected #liveMsgs {
+    position: absolute;
+    top: 57px;
+    bottom: 60px;
+    left: 0; right: 0;
+    overflow-y: auto !important;
+    padding: 12px 14px !important;
+  }
+
+  /* 입력창 폰트 최적화 */
   #liveInput {
     font-size: 15px !important;
     padding: 10px 12px !important;

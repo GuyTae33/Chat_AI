@@ -22,16 +22,23 @@ function startBgPolling() {
       } catch { return; }
     }
 
-    // ── 세션 카운트 확인 → 라이브 탭 뱃지 업데이트 ──
+    // ── 세션 카운트 확인 → 라이브 탭 뱃지 + 대시보드 업데이트 ──
     try {
       const res = await fetch(`${SERVER}/api/admin/sessions`, { headers: adminHeaders() });
       if (!res.ok) return;
       const data = await res.json();
-      const count = (data.sessions || []).length;
+      const sessions = data.sessions || [];
+      const count  = sessions.length;
       const badge   = document.getElementById('liveBadge');
       const countEl = document.getElementById('liveCount');
       if (badge)   badge.style.display = count > 0 ? 'inline' : 'none';
       if (countEl) countEl.textContent  = count + '개 세션';
+      // 대시보드도 업데이트
+      renderDashboardSessions(sessions);
+      const dashDot   = document.getElementById('dashDot');
+      const dashCount = document.getElementById('dashCount');
+      if (dashDot)   dashDot.style.background = count > 0 ? '#22c55e' : '#d1d5db';
+      if (dashCount) dashCount.textContent = count + '개 진행 중';
     } catch { /* 무시 */ }
 
   }, 5000);
