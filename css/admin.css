@@ -959,7 +959,8 @@ body {
     bottom: 60px;
     left: 0; right: 0;
     overflow-y: auto !important;
-    padding: 12px 14px !important;
+    overflow-x: hidden !important;
+    padding: 12px 10px !important;
   }
 
   /* 입력창 폰트 최적화 */
@@ -971,7 +972,7 @@ body {
     padding: 10px 14px !important;
     font-size: 14px !important;
   }
-  #adminUploadBtn, #templateBtn {
+  #adminUploadBtn {
     width: 36px !important;
     height: 36px !important;
   }
