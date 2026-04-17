@@ -248,6 +248,15 @@ async function send() {
   const editingMid = getEditingMid();
   if ((!text && !hasPending) || getIsLoading()) return;
 
+  /* 전송 시 타이핑 종료 */
+  if (serverOnline) {
+    fetch(`${SERVER}/api/session/typing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: SESSION_ID, typing: false }),
+    }).catch(() => {});
+  }
+
   /* ── 수정 모드 ── */
   if (editingMid && text) {
     applyEditToDom(editingMid, text);
@@ -537,6 +546,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* 파일 업로드 초기화 (칩 방식 — 전송 시 send()에서 처리) */
   initFileInput();
+
+  /* ── 고객 타이핑 신호 (어드민에게 전달) ── */
+  let _customerTypingTimer = null;
+  document.getElementById('inp').addEventListener('input', () => {
+    if (!serverOnline) return;
+    clearTimeout(_customerTypingTimer);
+    fetch(`${SERVER}/api/session/typing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: SESSION_ID, typing: true }),
+    }).catch(() => {});
+    // 2초 후 타이핑 종료 신호
+    _customerTypingTimer = setTimeout(() => {
+      fetch(`${SERVER}/api/session/typing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: SESSION_ID, typing: false }),
+      }).catch(() => {});
+    }, 2000);
+  });
 
   /* ── 닉네임 오버레이 처리 ── */
   const nicknameOverlay = document.getElementById('nicknameOverlay');

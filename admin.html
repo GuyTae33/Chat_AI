@@ -85,71 +85,21 @@
        대시보드 탭
   ============================================= -->
   <div class="section active" id="section-dashboard">
-
-    <!-- 통계 카드 4개 -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">📥 전체 접수</div>
-        <div class="stat-value" id="statTotal">0</div>
-        <div class="stat-change">건 누적</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-size:18px;font-weight:700;">📡 현재 진행 중인 상담</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:3px;">카드를 클릭하면 채팅방에 입장합니다</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">🟣 상담 진행 중</div>
-        <div class="stat-value" id="statActive">0</div>
-        <div class="stat-change">접수완료 + 상담중</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">📐 설계 진행 중</div>
-        <div class="stat-value" id="statDesign">0</div>
-        <div class="stat-change">설계중 건수</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">✅ 시공 완료</div>
-        <div class="stat-value" id="statDone">0</div>
-        <div class="stat-change up" id="statDoneRate">전환율 0%</div>
+      <div id="dashLiveDot" style="display:flex;align-items:center;gap:6px;font-size:13px;color:#6b7280;">
+        <div style="width:8px;height:8px;border-radius:50%;background:#d1d5db;" id="dashDot"></div>
+        <span id="dashCount">0개 진행 중</span>
       </div>
     </div>
-
-    <!-- 파이프라인 상태 바 -->
-    <div class="pipeline-card">
-      <h3>📈 견적 파이프라인 현황</h3>
-      <div class="pipeline-bar" id="pipelineBar">
-        <div class="pipeline-seg 접수완료" style="flex:1">접수완료</div>
-        <div class="pipeline-seg 상담중" style="flex:0">-</div>
-        <div class="pipeline-seg 설계중" style="flex:0">-</div>
-        <div class="pipeline-seg 시공완료" style="flex:0">-</div>
-      </div>
-      <div class="pipeline-legend">
-        <div class="legend-item">
-          <div class="legend-dot" style="background:#6b7280"></div>
-          <span>접수완료 <b id="leg0">0</b>건</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background:#7c3aed"></div>
-          <span>상담중 <b id="leg1">0</b>건</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background:#2563eb"></div>
-          <span>설계중 <b id="leg2">0</b>건</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background:#16a34a"></div>
-          <span>시공완료 <b id="leg3">0</b>건</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 최근 접수 -->
-    <div class="recent-card">
-      <h3>
-        🕐 최근 견적 접수
-        <span class="view-all-btn" onclick="switchTab('quotes')">전체 보기 →</span>
-      </h3>
-      <div id="recentList">
-        <div class="empty-state">
-          <div class="emoji">📭</div>
-          <p>아직 접수된 견적이 없습니다</p>
-        </div>
+    <div id="dashboardSessionList" style="display:flex;flex-direction:column;gap:10px;">
+      <div style="text-align:center;padding:60px 16px;color:#9ca3af;">
+        <div style="font-size:48px;margin-bottom:16px;">💤</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">현재 진행 중인 상담이 없습니다</div>
+        <div style="font-size:13px;">고객이 채팅을 시작하면 여기에 표시됩니다</div>
       </div>
     </div>
   </div>

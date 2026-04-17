@@ -150,6 +150,55 @@ function renderLiveSessionList(sessions) {
       </div>
     `;
   }).join('');
+
+  // 대시보드 세션 목록도 같이 업데이트
+  renderDashboardSessions(sessions);
+}
+
+/**
+ * 대시보드 탭 — 현재 진행 중인 채팅방 목록
+ */
+function renderDashboardSessions(sessions) {
+  const container = document.getElementById('dashboardSessionList');
+  if (!container) return;
+
+  if (sessions.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:60px 16px;color:#9ca3af;">
+        <div style="font-size:48px;margin-bottom:16px;">💤</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">현재 진행 중인 상담이 없습니다</div>
+        <div style="font-size:13px;">고객이 채팅을 시작하면 여기에 표시됩니다</div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = sessions.map(s => {
+    const isAdmin = s.mode === 'admin';
+    const ago     = timeSince(new Date(s.lastActivity));
+    return `
+      <div onclick="switchTab('live');setTimeout(()=>selectLiveSession('${escAttr(s.id)}'),100)"
+        style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px 18px;
+               cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px;"
+        onmouseenter="this.style.borderColor='#7c3aed';this.style.boxShadow='0 2px 12px rgba(124,58,237,.1)'"
+        onmouseleave="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+        <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,${isAdmin?'#7c3aed,#a855f7':'#6b7280,#9ca3af'});display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
+          ${isAdmin ? '👩‍💼' : '🤖'}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;margin-bottom:3px;">${escAdmin(s.customerName)}</div>
+          <div style="font-size:12px;color:#6b7280;">💬 ${s.messageCount}개 메시지 · ${ago}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:700;
+            background:${isAdmin ? '#ede9fe' : '#f3f4f6'};
+            color:${isAdmin ? '#7c3aed' : '#6b7280'};">
+            ${isAdmin ? '담당자 상담 중' : 'AI 상담 중'}
+          </span>
+          <span style="font-size:13px;color:#9ca3af;">→ 입장</span>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 /**
@@ -262,6 +311,24 @@ function renderLiveChatPanel(sess) {
       </div>
     `;
   }).join('');
+
+  /* 고객 타이핑 표시 */
+  const existingTyping = msgs.querySelector('.customer-typing-indicator');
+  if (existingTyping) existingTyping.remove();
+  if (sess.customerTyping) {
+    const typingEl = document.createElement('div');
+    typingEl.className = 'customer-typing-indicator';
+    typingEl.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:2px 0;';
+    typingEl.innerHTML = `
+      <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6b7280,#9ca3af);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">👤</div>
+      <div style="padding:10px 16px;background:#fff;border-radius:4px 18px 18px 18px;box-shadow:0 1px 3px rgba(0,0,0,.07);display:flex;gap:4px;align-items:center;">
+        <span style="width:6px;height:6px;background:#9ca3af;border-radius:50%;animation:typingDot .9s infinite;display:inline-block;"></span>
+        <span style="width:6px;height:6px;background:#9ca3af;border-radius:50%;animation:typingDot .9s .2s infinite;display:inline-block;"></span>
+        <span style="width:6px;height:6px;background:#9ca3af;border-radius:50%;animation:typingDot .9s .4s infinite;display:inline-block;"></span>
+      </div>
+    `;
+    msgs.appendChild(typingEl);
+  }
 
   if (wasAtBottom) msgs.scrollTop = msgs.scrollHeight;
 

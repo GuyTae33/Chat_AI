@@ -133,6 +133,7 @@ function getOrCreateSession(sessionId) {
       lastActivity: new Date(),
       lastReadAt: null,
       adminTyping: false,     // 상담원이 입력 중 여부
+      customerTyping: false,  // 고객이 입력 중 여부
       fallbackSent: false,    // API 오류 fallback 메시지 이미 보냈는지
     });
   }
@@ -544,6 +545,18 @@ app.post('/api/admin/typing', (req, res) => {
   const sess = sessions.get(sessionId);
   if (!sess) return res.status(404).json({ error: '세션 없음' });
   sess.adminTyping = !!typing;
+  res.json({ ok: true });
+});
+
+// ── 고객: 타이핑 상태 업데이트 ────────────────────────────
+app.post('/api/session/typing', (req, res) => {
+  const { sessionId, typing } = req.body;
+  if (!sessionId || !SESSION_ID_RE.test(sessionId)) {
+    return res.status(400).json({ error: '유효하지 않은 sessionId' });
+  }
+  const sess = sessions.get(sessionId);
+  if (!sess) return res.json({ ok: true }); // 세션 없으면 무시
+  sess.customerTyping = !!typing;
   res.json({ ok: true });
 });
 
