@@ -475,11 +475,15 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
 
 // ── 세션 등록 API ─────────────────────────────────────────────
 app.post('/api/session/register', (req, res) => {
-  const { sessionId } = req.body;
+  const { sessionId, nickname } = req.body;
   if (!sessionId || !SESSION_ID_RE.test(sessionId)) {
     return res.status(400).json({ error: '유효하지 않은 sessionId' });
   }
-  getOrCreateSession(sessionId);
+  const sess = getOrCreateSession(sessionId);
+  // 닉네임이 전달되면 customerName으로 설정 (기존 이름보다 우선)
+  if (nickname && typeof nickname === 'string') {
+    sess.customerName = nickname.trim().slice(0, 20);
+  }
   res.json({ ok: true });
 });
 

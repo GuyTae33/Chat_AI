@@ -224,6 +224,19 @@
   <!-- 서버 상태 배너 -->
   <div class="banner" id="banner"></div>
 
+  <!-- 닉네임 입력 오버레이 -->
+  <div class="nickname-overlay" id="nicknameOverlay">
+    <div class="nickname-box">
+      <div class="nickname-avatar">👩‍💼</div>
+      <div class="nickname-title">안녕하세요!</div>
+      <div class="nickname-sub">상담을 시작하기 전에<br>이름 또는 닉네임을 알려주세요 😊</div>
+      <input class="nickname-input" id="nicknameInput" type="text"
+        placeholder="예: 홍길동, 드레스룸손님" maxlength="20" autocomplete="off" />
+      <div class="nickname-error" id="nicknameError"></div>
+      <button class="nickname-btn" id="nicknameBtn">상담 시작하기 →</button>
+    </div>
+  </div>
+
   <!-- 채팅 뷰 -->
   <div id="chatView" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
     <div class="messages" id="messages">

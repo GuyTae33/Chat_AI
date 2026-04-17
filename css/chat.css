@@ -24,6 +24,7 @@ html, body {
 /* ── 전체 레이아웃 ─────────────────────────────── */
 .page  { min-height: 100vh; display: flex; justify-content: center; }
 .shell {
+  position: relative;
   width: 100%; max-width: 720px; min-height: 100vh;
   background: var(--white);
   box-shadow: 0 0 48px rgba(124,58,237,.12);
@@ -151,6 +152,76 @@ html, body {
   animation: blink 2s infinite;
 }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+/* ── 닉네임 입력 오버레이 ───────────────────── */
+.nickname-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+}
+.nickname-overlay.hidden { display: none; }
+.nickname-box {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.nickname-avatar {
+  font-size: 52px;
+  line-height: 1;
+}
+.nickname-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+.nickname-sub {
+  font-size: 14px;
+  color: var(--gray-600);
+  line-height: 1.6;
+}
+.nickname-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 12px;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+  text-align: center;
+}
+.nickname-input:focus {
+  border-color: var(--purple);
+}
+.nickname-error {
+  font-size: 12px;
+  color: #dc2626;
+  min-height: 16px;
+}
+.nickname-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--purple);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.nickname-btn:hover { background: #6d28d9; }
+.nickname-btn:active { background: #5b21b6; }
 
 /* 서버 상태 배너 */
 .banner {

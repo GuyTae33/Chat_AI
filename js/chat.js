@@ -13,6 +13,10 @@ const SESSION_ID = (() => {
   }
   return id;
 })();
+
+/* ── 닉네임: localStorage에 저장 ── */
+const NICKNAME_KEY = '루마네_닉네임';
+let userNickname = localStorage.getItem(NICKNAME_KEY) || '';
 import { todayStr } from './utils.js';
 import {
   initUI, setLoading, getIsLoading,
@@ -115,7 +119,7 @@ async function registerSessionWithHistory() {
     await fetch(`${SERVER}/api/session/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: SESSION_ID }),
+      body: JSON.stringify({ sessionId: SESSION_ID, nickname: userNickname }),
     });
     // 히스토리가 있으면 /api/chat으로 동기화 (빈 응답 OK)
     if (history.length > 0) {
@@ -136,7 +140,7 @@ async function registerSession() {
     await fetch(`${SERVER}/api/session/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: SESSION_ID }),
+      body: JSON.stringify({ sessionId: SESSION_ID, nickname: userNickname }),
     });
   } catch { /* 무시 */ }
 }
@@ -531,6 +535,43 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 파일 업로드 초기화 (칩 방식 — 전송 시 send()에서 처리) */
   initFileInput();
 
+  /* ── 닉네임 오버레이 처리 ── */
+  const nicknameOverlay = document.getElementById('nicknameOverlay');
+  const nicknameInput   = document.getElementById('nicknameInput');
+  const nicknameBtn     = document.getElementById('nicknameBtn');
+  const nicknameError   = document.getElementById('nicknameError');
+
+  function startChatWithNickname() {
+    const val = nicknameInput.value.trim();
+    if (!val) {
+      nicknameError.textContent = '닉네임을 입력해 주세요.';
+      nicknameInput.focus();
+      return;
+    }
+    userNickname = val;
+    localStorage.setItem(NICKNAME_KEY, userNickname);
+    nicknameOverlay.classList.add('hidden');
+    startChat();
+  }
+
+  nicknameBtn.addEventListener('click', startChatWithNickname);
+  nicknameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') startChatWithNickname();
+  });
+  nicknameInput.addEventListener('input', () => { nicknameError.textContent = ''; });
+
+  if (userNickname) {
+    // 이미 닉네임 있으면 바로 시작
+    nicknameOverlay.classList.add('hidden');
+    startChat();
+  } else {
+    nicknameInput.focus();
+  }
+});
+
+/* ── 실제 채팅 초기화 (닉네임 확인 후 실행) ── */
+async function startChat() {
+
   /* 서버 확인 후 인사 or 복원 + 세션 등록 + 폴링 시작 */
   checkServer().then(async () => {
     const savedHistory = loadHistory();
@@ -581,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* 배포 자동감지 — 새 버전 배포 시 자동 새로고침 */
   startUpdateChecker();
-});
+}
 
 /* ================================================================
    이전 상담 이력 조회 (Supabase, 연락처 기반)
