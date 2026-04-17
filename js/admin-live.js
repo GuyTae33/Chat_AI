@@ -167,7 +167,20 @@ async function selectLiveSession(sessionId) {
 
   liveMsgPollTimer = setInterval(fetchLiveSessionMsgs, 1000);
   fetchLiveSessions();
+
+  // 모바일: 채팅 패널 전체화면으로 전환
+  if (window.innerWidth < 768) {
+    document.querySelector('.live-split')?.classList.add('session-selected');
+  }
 }
+
+// 모바일: 목록으로 뒤로가기
+window.liveGoBack = function() {
+  document.querySelector('.live-split')?.classList.remove('session-selected');
+  clearInterval(liveMsgPollTimer);
+  liveMsgPollTimer = null;
+  liveSelectedId = null;
+};
 
 /**
  * 선택된 세션의 메시지를 가져와 패널에 표시

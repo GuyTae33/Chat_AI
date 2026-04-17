@@ -808,6 +808,21 @@ body {
 }
 .sidebar-backdrop.open { display: block; }
 
+/* 모바일 뒤로가기 버튼 (기본 숨김) */
+.live-back-btn {
+  display: none;
+  width: 32px; height: 32px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #374151;
+}
+
 /* =============================================
    모바일 반응형 (768px 미만)
 ============================================= */
@@ -838,25 +853,62 @@ body {
   .tab-bar { padding: 0 8px; overflow-x: auto; }
   .tab-btn { padding: 12px 10px; font-size: 12px; white-space: nowrap; }
 
-  /* 섹션 패딩 */
-  .section { padding: 12px; }
+  /* 섹션 패딩 최소화 */
+  .section { padding: 8px; }
 
   /* 통계 카드: 2열 */
-  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
   .stat-value { font-size: 22px; }
+  .stat-card { padding: 14px; }
 
-  /* 라이브 상담 분할 → 단일 컬럼 */
+  /* ── 라이브 상담 패널: 카톡 스타일 전환 ── */
   .live-split {
-    grid-template-columns: 1fr !important;
-    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: calc(100vh - 130px) !important;
+    gap: 0 !important;
   }
-  /* 세션 목록 고정 높이 */
-  .live-split > div:first-child {
-    height: 280px;
+
+  /* 세션 목록: 기본 표시 (전체 높이) */
+  .live-sessions-col {
+    flex: 1;
+    min-height: 0;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
-  /* 채팅 패널 높이 */
-  .live-split > div:last-child {
-    height: calc(100vh - 200px);
+
+  /* 채팅 패널: 기본 숨김 */
+  .live-chat-col {
+    display: none !important;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    border-radius: 0 !important;
+    flex-direction: column;
+  }
+
+  /* 세션 선택 시: 목록 숨기고 채팅 전체화면 */
+  .live-split.session-selected .live-sessions-col {
+    display: none;
+  }
+  .live-split.session-selected .live-chat-col {
+    display: flex !important;
+  }
+
+  /* 뒤로가기 버튼 표시 */
+  .live-back-btn { display: flex; }
+
+  /* 채팅 패널 내부 메시지 높이 */
+  #liveMsgs {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* 어드민 답장 입력창 */
+  #adminReplyBar, #liveInputWrap {
+    flex-shrink: 0;
   }
 }
 
