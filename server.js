@@ -600,6 +600,21 @@ app.post('/api/admin/message', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── 견적 목록 API (임시: 메모리 세션에서 접수 완료된 항목 반환) ──
+app.get('/api/quotes', (req, res) => {
+  const quotes = Object.values(sessions)
+    .filter(s => s.status === '접수완료' || s.status === '견적완료')
+    .map(s => ({
+      id: s.id,
+      name: s.customerName || s.guestName || '미입력',
+      phone: s.phone || '',
+      region: s.region || '',
+      createdAt: s.createdAt,
+      status: s.status,
+    }));
+  res.json({ quotes });
+});
+
 // ── 대화 저장 API ─────────────────────────────────────────────
 // chat.html에서 대화 종료 시 전체 메시지를 Supabase에 저장
 app.post('/api/save-conversation', async (req, res) => {
