@@ -261,6 +261,7 @@ html, body {
 .messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px 14px 8px;
   background: var(--chat-bg);
   display: flex; flex-direction: column; gap: 0;
@@ -318,6 +319,8 @@ html, body {
   display: flex;
   align-items: flex-end;
   gap: 5px;
+  min-width: 0;
+  max-width: 100%;
 }
 /* 내 메시지: 메타(시간/읽음)가 말풍선 왼쪽 */
 .msg-group.user .msg-bubbles-row { flex-direction: row-reverse; }
