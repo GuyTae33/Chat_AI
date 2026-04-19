@@ -221,12 +221,22 @@ async function selectLiveSession(sessionId) {
   // await 동안 다른 세션이 선택됐으면 타이머 설정하지 않음 (stale 방지)
   if (liveSelectedId !== sessionId) return;
 
+  // 첫 진입 시 항상 맨 아래로 (레이아웃 계산 후)
+  requestAnimationFrame(() => {
+    const msgs = document.getElementById('liveMsgs');
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
+  });
+
   liveMsgPollTimer = setInterval(fetchLiveSessionMsgs, 1000);
   fetchLiveSessions();
 
-  // 모바일: 채팅 패널 전체화면으로 전환
+  // 모바일: 채팅 패널 전체화면으로 전환 후 스크롤
   if (window.innerWidth < 768) {
     document.querySelector('.live-split')?.classList.add('session-selected');
+    setTimeout(() => {
+      const msgs = document.getElementById('liveMsgs');
+      if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    }, 50);
   }
 }
 
