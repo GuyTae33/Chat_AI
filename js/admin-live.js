@@ -506,7 +506,9 @@ function refreshAdminSendBtn() {
   const btn   = document.getElementById('liveSendBtn');
   const input = document.getElementById('liveInput');
   if (!btn) return;
-  btn.disabled = !liveAdminMode || !liveSelectedId || (!input?.value.trim() && !adminPendingFile);
+  const active = liveAdminMode && liveSelectedId && (input?.value.trim() || adminPendingFile);
+  btn.disabled = !active;
+  btn.style.opacity = active ? '1' : '0.45';
 }
 
 /**
