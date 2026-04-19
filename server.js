@@ -148,6 +148,17 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// ── 보안 헤더 (meta 태그 대신 HTTP 헤더로 설정) ──
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+  next();
+});
+
+// ── favicon.ico — 404 방지 ──
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // ── 정적 파일 제공 — HTML/JS/CSS는 캐시 안 함 (항상 최신 버전) ──
 app.use(express.static(__dirname, {
   setHeaders(res, filePath) {
