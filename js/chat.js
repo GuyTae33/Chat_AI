@@ -69,7 +69,7 @@ let pollTimer      = null;    // 폴링 타이머
 async function checkServer() {
   try {
     const r = await fetch(`${SERVER}/api/health`, {
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(3000),
     });
     serverOnline = r.ok;
   } catch {
@@ -611,11 +611,23 @@ async function startChat() {
     if (savedHistory.length > 0) {
       /* ── 새로고침 복원: 저장된 대화 화면에 다시 표시 ── */
       history = savedHistory;
-      for (const m of savedHistory) {
-        addMsg(m.role === 'assistant' ? 'bot' : 'user', m.content, {
-          mid: m.mid,
-          replyTo: m.replyTo ?? null,
-        });
+      try {
+        for (const m of savedHistory) {
+          if (!m || !m.role || !m.content) continue;
+          addMsg(m.role === 'assistant' ? 'bot' : 'user', m.content, {
+            mid: m.mid,
+            replyTo: m.replyTo ?? null,
+          });
+        }
+      } catch (e) {
+        /* 복원 실패 시 히스토리 초기화 후 새 인사 */
+        console.warn('대화 복원 실패, 초기화 후 재시작:', e);
+        history = [];
+        clearHistory();
+        clearMessages();
+        greet();
+        if (serverOnline) { registerSession(); startPolling(); }
+        return;
       }
       /* 서버 세션에도 재동기화 */
       if (serverOnline) {
@@ -642,6 +654,9 @@ async function startChat() {
       const savedPhone = localStorage.getItem('루마네_연락처');
       if (savedPhone) fetchConsultationHistory(savedPhone);
     }
+  }).catch(() => {
+    /* 예상치 못한 오류 시 데모 인사로 fallback */
+    greet();
   });
 
   /* 브라우저 알림 권한 요청 */
