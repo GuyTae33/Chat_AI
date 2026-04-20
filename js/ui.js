@@ -342,9 +342,11 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
       if (q) bubblesCol.appendChild(q);
     }
 
+    let hasSpecial = false;
     for (const part of parts) {
       const special = renderBubbleContent(part);
       if (special) {
+        hasSpecial = true;
         bubblesCol.appendChild(special);
       } else {
         const b = document.createElement('div');
@@ -369,7 +371,7 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
 
     $msgs.appendChild(group);
     addContextMenu(group, clean);
-    appendLinkPreviews(bubblesCol, clean);
+    if (!hasSpecial) appendLinkPreviews(bubblesCol, clean);
 
   } else {
     /* 내 메시지 */
@@ -414,7 +416,7 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
 
     $msgs.appendChild(group);
     addContextMenu(group, clean);
-    appendLinkPreviews(bubblesCol, clean);
+    if (!special) appendLinkPreviews(bubblesCol, clean);
   }
 
   scrollBottom();
