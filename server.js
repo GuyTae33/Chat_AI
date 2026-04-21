@@ -36,29 +36,13 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
 
-// ── 루마네 시스템 프롬프트 (.md 파일들 합산) ─────────────────
-const MD_FILES = [
-  '01_브랜드역할과상담톤.md',
-  '02_배송비정책_최신.md',
-  '03_설치치수계산규칙.md',
-  '04_할인규칙.md',
-  '05_견적표원칙.md',
-  '06_상담흐름.md',
-  '07_필수확인항목.md',
-  '08_자주쓰는응답예시.md',
-  '09_견적출력템플릿.md',
-  '10_예외처리규칙.md',
-  '11_이미지해석가이드.md',
-  '12_실제상담예시_초기응대.md',
-  '13_실제상담예시_견적안내.md',
-  '14_실제상담예시_이미지응대.md',
-  '15_예시이미지_트리거규칙.md',
-];
-
-const mdContents = MD_FILES.map(file => {
-  const filePath = path.join(__dirname, file);
-  return fs.readFileSync(filePath, 'utf-8');
-}).join('\n\n---\n\n');
+// ── 루마네 시스템 프롬프트 (지침/ 폴더 자동 스캔) ────────────
+const MD_DIR = path.join(__dirname, '지침');
+const mdContents = fs.readdirSync(MD_DIR)
+  .filter(f => f.endsWith('.md'))
+  .sort()
+  .map(f => fs.readFileSync(path.join(MD_DIR, f), 'utf-8'))
+  .join('\n\n---\n\n');
 
 const SYSTEM_PROMPT = `당신은 '루마네'라는 이름의 케이트블랑 시스템행거 전문 상담사입니다.
 아래 지침을 반드시 따르세요.
@@ -131,6 +115,7 @@ function getOrCreateSession(sessionId) {
       customerName: null,
       startedAt: new Date(),
       lastActivity: new Date(),
+      lastMessageAt: new Date(),
       lastReadAt: null,
       adminTyping: false,     // 상담원이 입력 중 여부
       customerTyping: false,  // 고객이 입력 중 여부
@@ -427,6 +412,7 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
     const sess = getOrCreateSession(sessionId);
     sess.messages = messages;
     sess.lastActivity = new Date();
+    if (!syncOnly) sess.lastMessageAt = new Date();
 
     // 고객 이름 자동 추출 (첫 번째 user 메시지)
     const firstUser = messages.find(m => m.role === 'user');
@@ -553,10 +539,11 @@ app.get('/api/admin/sessions', (req, res) => {
       messageCount: sess.messages.length,
       startedAt: sess.startedAt,
       lastActivity: sess.lastActivity,
+      lastMessageAt: sess.lastMessageAt || sess.startedAt,
     });
   }
-  // 최근 활동 순 정렬
-  list.sort((a, b) => new Date(b.lastActivity) - new Date(a.lastActivity));
+  // 마지막 메시지 시간 기준 정렬 (폴링으로 갱신되는 lastActivity 사용 안 함)
+  list.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
   res.json({ sessions: list });
 });
 
@@ -625,6 +612,7 @@ app.post('/api/admin/message', (req, res) => {
   sess.pendingAdminMsgs.push(msg);
   sess.messages.push(msg);
   sess.lastActivity = new Date();
+  sess.lastMessageAt = new Date();
 
   res.json({ ok: true });
 });
