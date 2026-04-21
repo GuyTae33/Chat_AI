@@ -99,6 +99,37 @@ app.use('/api/admin', requireAdmin);
 // ── 라이브 세션 관리 (메모리) ─────────────────────────────────
 // 서버 재시작 시 초기화됨. 필요 시 Supabase로 이전 가능.
 const sessions = new Map();
+
+// 토큰 사용량 누적 (서버 재시작 시 초기화)
+const tokenStats = {
+  total: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
+  bySessions: new Map(), // sessionId → { input, output, cacheWrite, cacheRead, turns }
+};
+
+function addTokenUsage(sessionId, usage) {
+  if (!usage) return;
+  const i  = usage.input_tokens || 0;
+  const o  = usage.output_tokens || 0;
+  const cw = usage.cache_creation_input_tokens || 0;
+  const cr = usage.cache_read_input_tokens || 0;
+
+  tokenStats.total.input     += i;
+  tokenStats.total.output    += o;
+  tokenStats.total.cacheWrite += cw;
+  tokenStats.total.cacheRead  += cr;
+
+  if (sessionId) {
+    if (!tokenStats.bySessions.has(sessionId)) {
+      tokenStats.bySessions.set(sessionId, { input: 0, output: 0, cacheWrite: 0, cacheRead: 0, turns: 0 });
+    }
+    const s = tokenStats.bySessions.get(sessionId);
+    s.input     += i;
+    s.output    += o;
+    s.cacheWrite += cw;
+    s.cacheRead  += cr;
+    s.turns     += 1;
+  }
+}
 // 구조: Map<sessionId, {
 //   id, mode: 'ai'|'admin', messages: [],
 //   pendingAdminMsgs: [], customerName: null,
@@ -468,6 +499,9 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
 
     const reply = response.content[0].text;
 
+    // 토큰 사용량 기록
+    addTokenUsage(sessionId, response.usage);
+
     // 세션에 AI 응답도 저장
     if (sessionId && sessions.has(sessionId)) {
       const sess = sessions.get(sessionId);
@@ -545,6 +579,49 @@ app.get('/api/admin/sessions', (req, res) => {
   // 마지막 메시지 시간 기준 정렬 (폴링으로 갱신되는 lastActivity 사용 안 함)
   list.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
   res.json({ sessions: list });
+});
+
+// ── 어드민: 토큰 사용량 통계 ─────────────────────────────────
+app.get('/api/admin/token-stats', (_req, res) => {
+  // claude-sonnet-4-6 가격 ($/1M 토큰)
+  const PRICE = { input: 3.0, output: 15.0, cacheWrite: 3.75, cacheRead: 0.30 };
+  const t = tokenStats.total;
+
+  const costUSD =
+    (t.input     / 1e6) * PRICE.input +
+    (t.output    / 1e6) * PRICE.output +
+    (t.cacheWrite / 1e6) * PRICE.cacheWrite +
+    (t.cacheRead  / 1e6) * PRICE.cacheRead;
+
+  // 캐시 없었을 경우 비용 (캐시Read를 input으로 계산)
+  const costWithoutCache =
+    ((t.input + t.cacheRead) / 1e6) * PRICE.input +
+    (t.output / 1e6) * PRICE.output +
+    (t.cacheWrite / 1e6) * PRICE.cacheWrite;
+
+  const saved = costWithoutCache - costUSD;
+
+  // 세션별 통계
+  const perSession = [];
+  for (const [id, stat] of tokenStats.bySessions) {
+    const sess = sessions.get(id);
+    perSession.push({
+      sessionId: id,
+      customerName: sess?.customerName || '(이름 미수집)',
+      ...stat,
+    });
+  }
+  perSession.sort((a, b) => (b.input + b.output) - (a.input + a.output));
+
+  res.json({
+    total: t,
+    costUSD: +costUSD.toFixed(4),
+    costKRW: Math.round(costUSD * 1380),
+    savedUSD: +saved.toFixed(4),
+    savedKRW: Math.round(saved * 1380),
+    sessionCount: tokenStats.bySessions.size,
+    perSession,
+  });
 });
 
 // ── 어드민: 특정 세션 전체 메시지 조회 ───────────────────────

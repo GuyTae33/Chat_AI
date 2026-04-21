@@ -406,7 +406,43 @@ function switchTab(tab) {
     document.getElementById('topbarTitle').textContent = '📡 라이브 상담';
     document.getElementById('liveBadge').style.display = 'none';
     startLivePolling();
+  } else if (tab === 'tokens') {
+    document.getElementById('topbarTitle').textContent = '🪙 토큰 사용량';
+    loadTokenStats();
   }
+}
+
+async function loadTokenStats() {
+  try {
+    const res = await fetch(`${SERVER}/api/admin/token-stats`, { headers: adminHeaders() });
+    if (!res.ok) return;
+    const d = await res.json();
+
+    document.getElementById('tk-cost-krw').textContent = `₩${d.costKRW.toLocaleString()}`;
+    document.getElementById('tk-cost-usd').textContent = `$${d.costUSD}`;
+    document.getElementById('tk-saved-krw').textContent = `₩${d.savedKRW.toLocaleString()} 절감`;
+    document.getElementById('tk-saved-usd').textContent = `$${d.savedUSD} 절감`;
+    document.getElementById('tk-input').textContent = (d.total.input + d.total.cacheRead).toLocaleString();
+    document.getElementById('tk-output').textContent = d.total.output.toLocaleString();
+    document.getElementById('tk-sessions').textContent = `${d.sessionCount}개 세션`;
+    document.getElementById('tk-cache-write').textContent = d.total.cacheWrite.toLocaleString();
+    document.getElementById('tk-cache-read').textContent = d.total.cacheRead.toLocaleString();
+
+    const tbody = document.getElementById('tk-session-rows');
+    if (d.perSession.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="padding:20px;text-align:center;color:#9ca3af;">데이터 없음</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = d.perSession.map(s => `
+      <tr style="border-top:1px solid #f3f4f6;">
+        <td style="padding:8px 14px;">${s.customerName}</td>
+        <td style="padding:8px 14px;text-align:right;">${s.input.toLocaleString()}</td>
+        <td style="padding:8px 14px;text-align:right;">${s.output.toLocaleString()}</td>
+        <td style="padding:8px 14px;text-align:right;">${s.cacheRead.toLocaleString()}</td>
+        <td style="padding:8px 14px;text-align:right;">${s.turns}</td>
+      </tr>
+    `).join('');
+  } catch { /* 무시 */ }
 }
 
 
