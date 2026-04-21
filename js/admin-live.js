@@ -154,9 +154,16 @@ function renderLiveSessionList(sessions) {
           <span>💬 ${s.messageCount}개 메시지</span>
           <span>${ago}</span>
         </div>
+        ${s.tokens ? `<div style="margin-top:5px;font-size:11px;color:#7c3aed;font-weight:600;">🪙 ₩${s.tokens.costKRW.toLocaleString()} · ${s.tokens.totalTokens.toLocaleString()}토큰</div>` : ''}
       </div>
     `;
   }).join('');
+
+  // 토큰 맵 갱신 (채팅 패널 헤더에서 참조)
+  for (const s of sessions) {
+    if (s.tokens) window._liveTokenMap = window._liveTokenMap || {};
+    if (s.tokens) window._liveTokenMap[s.id] = s.tokens;
+  }
 
   // 대시보드 세션 목록도 같이 업데이트
   renderDashboardSessions(sessions);
@@ -194,6 +201,7 @@ function renderDashboardSessions(sessions) {
         <div style="flex:1;min-width:0;">
           <div style="font-size:15px;font-weight:700;margin-bottom:3px;">${escAdmin(s.customerName)}</div>
           <div style="font-size:12px;color:#6b7280;">💬 ${s.messageCount}개 메시지 · ${ago}</div>
+          ${s.tokens ? `<div style="font-size:11px;color:#7c3aed;font-weight:600;margin-top:2px;">🪙 ₩${s.tokens.costKRW.toLocaleString()} · ${s.tokens.totalTokens.toLocaleString()}토큰</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:700;
@@ -273,8 +281,10 @@ function renderLiveChatPanel(sess) {
 
   document.getElementById('livePanelTitle').textContent =
     `💬 ${sess.customerName || '(이름 미수집)'}`;
+  const tk = (window._liveTokenMap || {})[sess.id];
+  const tkStr = tk ? ` · 🪙 ₩${tk.costKRW.toLocaleString()} (${tk.totalTokens.toLocaleString()}토큰)` : '';
   document.getElementById('livePanelMeta').textContent =
-    `세션 ${sess.id.slice(0, 20)}… · 메시지 ${sess.messages.length}개`;
+    `세션 ${sess.id.slice(0, 20)}… · 메시지 ${sess.messages.length}개${tkStr}`;
 
   document.getElementById('livePanelActions').innerHTML = isAdmin
     ? `<button class="btn btn-outline" onclick="releaseSession()" style="font-size:13px;">🤖 AI에게 넘기기</button>`

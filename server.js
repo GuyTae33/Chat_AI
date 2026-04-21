@@ -574,8 +574,9 @@ app.get('/api/session/status', (req, res) => {
 });
 
 // ── 어드민: 활성 세션 목록 ────────────────────────────────────
-app.get('/api/admin/sessions', (req, res) => {
+app.get('/api/admin/sessions', async (_req, res) => {
   const list = [];
+  const sessionIds = [];
   for (const [id, sess] of sessions) {
     list.push({
       id,
@@ -586,9 +587,32 @@ app.get('/api/admin/sessions', (req, res) => {
       lastActivity: sess.lastActivity,
       lastMessageAt: sess.lastMessageAt || sess.startedAt,
     });
+    sessionIds.push(id);
   }
-  // 마지막 메시지 시간 기준 정렬 (폴링으로 갱신되는 lastActivity 사용 안 함)
   list.sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+
+  // 토큰 사용량 병합
+  if (sessionIds.length > 0) {
+    try {
+      const { data: tokenRows } = await supabase
+        .from('token_stats')
+        .select('session_id, input_tokens, output_tokens, cache_write_tokens, cache_read_tokens, turns')
+        .in('session_id', sessionIds);
+      const PRICE = { input: 3.0, output: 15.0, cacheWrite: 3.75, cacheRead: 0.30 };
+      const tokenMap = {};
+      for (const r of (tokenRows || [])) {
+        const usd = (r.input_tokens/1e6)*PRICE.input + (r.output_tokens/1e6)*PRICE.output +
+                    (r.cache_write_tokens/1e6)*PRICE.cacheWrite + (r.cache_read_tokens/1e6)*PRICE.cacheRead;
+        tokenMap[r.session_id] = {
+          totalTokens: r.input_tokens + r.output_tokens,
+          costKRW: Math.round(usd * 1380),
+          turns: r.turns,
+        };
+      }
+      for (const s of list) s.tokens = tokenMap[s.id] || null;
+    } catch { /* 무시 */ }
+  }
+
   res.json({ sessions: list });
 });
 
