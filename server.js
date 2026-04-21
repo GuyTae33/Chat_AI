@@ -100,34 +100,45 @@ app.use('/api/admin', requireAdmin);
 // 서버 재시작 시 초기화됨. 필요 시 Supabase로 이전 가능.
 const sessions = new Map();
 
-// 토큰 사용량 누적 (서버 재시작 시 초기화)
-const tokenStats = {
-  total: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
-  bySessions: new Map(), // sessionId → { input, output, cacheWrite, cacheRead, turns }
-};
-
-function addTokenUsage(sessionId, usage) {
-  if (!usage) return;
+// 토큰 사용량 → Supabase에 영구 저장
+async function addTokenUsage(sessionId, usage) {
+  if (!usage || !sessionId) return;
   const i  = usage.input_tokens || 0;
   const o  = usage.output_tokens || 0;
   const cw = usage.cache_creation_input_tokens || 0;
   const cr = usage.cache_read_input_tokens || 0;
+  const customerName = sessions.get(sessionId)?.customerName || null;
 
-  tokenStats.total.input     += i;
-  tokenStats.total.output    += o;
-  tokenStats.total.cacheWrite += cw;
-  tokenStats.total.cacheRead  += cr;
+  try {
+    const { data: existing } = await supabase
+      .from('token_stats')
+      .select('id, input_tokens, output_tokens, cache_write_tokens, cache_read_tokens, turns')
+      .eq('session_id', sessionId)
+      .single();
 
-  if (sessionId) {
-    if (!tokenStats.bySessions.has(sessionId)) {
-      tokenStats.bySessions.set(sessionId, { input: 0, output: 0, cacheWrite: 0, cacheRead: 0, turns: 0 });
+    if (existing) {
+      await supabase.from('token_stats').update({
+        input_tokens:       existing.input_tokens + i,
+        output_tokens:      existing.output_tokens + o,
+        cache_write_tokens: existing.cache_write_tokens + cw,
+        cache_read_tokens:  existing.cache_read_tokens + cr,
+        turns:              existing.turns + 1,
+        customer_name:      customerName,
+        updated_at:         new Date().toISOString(),
+      }).eq('id', existing.id);
+    } else {
+      await supabase.from('token_stats').insert({
+        session_id:         sessionId,
+        customer_name:      customerName,
+        input_tokens:       i,
+        output_tokens:      o,
+        cache_write_tokens: cw,
+        cache_read_tokens:  cr,
+        turns:              1,
+      });
     }
-    const s = tokenStats.bySessions.get(sessionId);
-    s.input     += i;
-    s.output    += o;
-    s.cacheWrite += cw;
-    s.cacheRead  += cr;
-    s.turns     += 1;
+  } catch (err) {
+    console.error('토큰 저장 오류:', err.message);
   }
 }
 // 구조: Map<sessionId, {
@@ -582,46 +593,60 @@ app.get('/api/admin/sessions', (req, res) => {
 });
 
 // ── 어드민: 토큰 사용량 통계 ─────────────────────────────────
-app.get('/api/admin/token-stats', (_req, res) => {
-  // claude-sonnet-4-6 가격 ($/1M 토큰)
-  const PRICE = { input: 3.0, output: 15.0, cacheWrite: 3.75, cacheRead: 0.30 };
-  const t = tokenStats.total;
+app.get('/api/admin/token-stats', async (_req, res) => {
+  try {
+    const { data: rows, error } = await supabase
+      .from('token_stats')
+      .select('*')
+      .order('updated_at', { ascending: false });
 
-  const costUSD =
-    (t.input     / 1e6) * PRICE.input +
-    (t.output    / 1e6) * PRICE.output +
-    (t.cacheWrite / 1e6) * PRICE.cacheWrite +
-    (t.cacheRead  / 1e6) * PRICE.cacheRead;
+    if (error) return res.status(500).json({ error: error.message });
 
-  // 캐시 없었을 경우 비용 (캐시Read를 input으로 계산)
-  const costWithoutCache =
-    ((t.input + t.cacheRead) / 1e6) * PRICE.input +
-    (t.output / 1e6) * PRICE.output +
-    (t.cacheWrite / 1e6) * PRICE.cacheWrite;
+    const PRICE = { input: 3.0, output: 15.0, cacheWrite: 3.75, cacheRead: 0.30 };
 
-  const saved = costWithoutCache - costUSD;
+    const total = rows.reduce((acc, r) => {
+      acc.input     += r.input_tokens;
+      acc.output    += r.output_tokens;
+      acc.cacheWrite += r.cache_write_tokens;
+      acc.cacheRead  += r.cache_read_tokens;
+      return acc;
+    }, { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 });
 
-  // 세션별 통계
-  const perSession = [];
-  for (const [id, stat] of tokenStats.bySessions) {
-    const sess = sessions.get(id);
-    perSession.push({
-      sessionId: id,
-      customerName: sess?.customerName || '(이름 미수집)',
-      ...stat,
+    const costUSD =
+      (total.input     / 1e6) * PRICE.input +
+      (total.output    / 1e6) * PRICE.output +
+      (total.cacheWrite / 1e6) * PRICE.cacheWrite +
+      (total.cacheRead  / 1e6) * PRICE.cacheRead;
+
+    const costWithoutCache =
+      ((total.input + total.cacheRead) / 1e6) * PRICE.input +
+      (total.output / 1e6) * PRICE.output +
+      (total.cacheWrite / 1e6) * PRICE.cacheWrite;
+
+    const saved = costWithoutCache - costUSD;
+
+    const perSession = rows.map(r => ({
+      sessionId:    r.session_id,
+      customerName: r.customer_name || '(이름 미수집)',
+      input:        r.input_tokens,
+      output:       r.output_tokens,
+      cacheWrite:   r.cache_write_tokens,
+      cacheRead:    r.cache_read_tokens,
+      turns:        r.turns,
+    }));
+
+    res.json({
+      total,
+      costUSD: +costUSD.toFixed(4),
+      costKRW: Math.round(costUSD * 1380),
+      savedUSD: +saved.toFixed(4),
+      savedKRW: Math.round(saved * 1380),
+      sessionCount: rows.length,
+      perSession,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  perSession.sort((a, b) => (b.input + b.output) - (a.input + a.output));
-
-  res.json({
-    total: t,
-    costUSD: +costUSD.toFixed(4),
-    costKRW: Math.round(costUSD * 1380),
-    savedUSD: +saved.toFixed(4),
-    savedKRW: Math.round(saved * 1380),
-    sessionCount: tokenStats.bySessions.size,
-    perSession,
-  });
 });
 
 // ── 어드민: 특정 세션 전체 메시지 조회 ───────────────────────
