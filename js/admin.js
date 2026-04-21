@@ -428,6 +428,15 @@ async function loadTokenStats() {
     document.getElementById('tk-cache-write').textContent = d.total.cacheWrite.toLocaleString();
     document.getElementById('tk-cache-read').textContent = d.total.cacheRead.toLocaleString();
 
+    // 세션당 평균
+    if (d.sessionCount > 0) {
+      const avgInput  = Math.round((d.total.input + d.total.cacheRead) / d.sessionCount);
+      const avgOutput = Math.round(d.total.output / d.sessionCount);
+      const avgCostKRW = Math.round(d.costKRW / d.sessionCount);
+      document.getElementById('tk-avg-cost').textContent = `₩${avgCostKRW.toLocaleString()}`;
+      document.getElementById('tk-avg-tokens').textContent = `입력 ${avgInput.toLocaleString()} / 출력 ${avgOutput.toLocaleString()}`;
+    }
+
     const tbody = document.getElementById('tk-session-rows');
     if (d.perSession.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" style="padding:20px;text-align:center;color:#9ca3af;">데이터 없음</td></tr>`;
