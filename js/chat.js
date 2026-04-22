@@ -549,6 +549,7 @@ export function newChat() {
   resetCollect();
   appendDateSep(todayStr());
   greet();
+  if (serverOnline) { registerSession(); startPolling(); }
 }
 
 /* ================================================================
