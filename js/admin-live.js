@@ -437,9 +437,10 @@ function renderLiveChatPanel(sess) {
   document.getElementById('livePanelMeta').textContent =
     `세션 ${sess.id.slice(0, 20)}… · 메시지 ${sess.messages.length}개${tkStr}`;
 
-  document.getElementById('livePanelActions').innerHTML = isAdmin
+  document.getElementById('livePanelActions').innerHTML = (isAdmin
     ? `<button class="btn btn-outline" onclick="releaseSession()" style="font-size:13px;">🤖 AI에게 넘기기</button>`
-    : `<button class="btn btn-primary" onclick="takeoverSession()" style="font-size:13px;">👩‍💼 난입하기</button>`;
+    : `<button class="btn btn-primary" onclick="takeoverSession()" style="font-size:13px;">👩‍💼 난입하기</button>`)
+    + `<button class="btn btn-outline" onclick="saveConversationManual()" style="font-size:13px;">💾 저장</button>`;
 
   const msgs = document.getElementById('liveMsgs');
   const wasAtBottom = msgs.scrollTop + msgs.clientHeight >= msgs.scrollHeight - 30;
@@ -575,6 +576,24 @@ function initAdminFileUpload() {
     }
     showAdminAttachBar(file);
   });
+}
+
+/**
+ * 대화 수동 저장
+ */
+async function saveConversationManual() {
+  if (!liveSelectedId) return;
+  try {
+    const res = await fetch(`${SERVER}/api/admin/save-conversation`, {
+      method: 'POST',
+      headers: adminHeaders(),
+      body: JSON.stringify({ sessionId: liveSelectedId }),
+    });
+    if (!res.ok) throw new Error();
+    showToast('💾 대화가 저장되었습니다.', 'success');
+  } catch {
+    showToast('❌ 저장에 실패했습니다', 'error');
+  }
 }
 
 /**

@@ -167,11 +167,96 @@ function getOrCreateSession(sessionId) {
   return sessions.get(sessionId);
 }
 
-// 30분 이상 비활성 세션 정리 (메모리 관리)
-setInterval(() => {
+// ── 대화 내용 Supabase 저장 ─────────────────────────────────
+const OPT_PRICES = [
+  { re: /이불긴장/,                                        price: 350000 },
+  { re: /이불장/,                                          price: 200000 },
+  { re: /화장대/,                                          price: 250000 },
+  { re: /아일랜드장.{0,5}손잡이|손잡이.{0,5}아일랜드장/,  price: 219000 },
+  { re: /아일랜드장/,                                      price: 169000 },
+  { re: /거울장/,                                          price: 169000 },
+  { re: /4단\s*서랍/,                                      price: 160000 },
+  { re: /3단\s*서랍/,                                      price: 119000 },
+  { re: /2단\s*서랍/,                                      price:  99000 },
+  { re: /서랍(?!장)/,                                      price:  99000 },
+  { re: /바지걸이/,                                        price: 138000 },
+  { re: /디바이더/,                                        price:  69000 },
+  { re: /7단\s*코너/,                                      price: 120000 },
+  { re: /6단\s*코너/,                                      price:  90000 },
+  { re: /5단\s*코너/,                                      price:  60000 },
+  { re: /7단\s*선반/,                                      price:  80000 },
+  { re: /6단\s*선반/,                                      price:  60000 },
+  { re: /5단\s*선반/,                                      price:  40000 },
+];
+
+function calcEstimatedPrice(sizeRaw, layout, optRaw) {
+  const nums = (sizeRaw || '').replace(/[×xX×]/g, ' ').match(/\d{3,4}/g) || [];
+  const w = parseInt(nums[0] || '0', 10);
+  const d = parseInt(nums[1] || '0', 10);
+  let totalMm = 0;
+  if (w > 0) {
+    if (/ㄷ|U자|U형/.test(layout))      totalMm = w + d * 2;
+    else if (/ㄱ|L자|L형/.test(layout)) totalMm = w + d;
+    else if (/ㅁ|사방/.test(layout))    totalMm = (w + d) * 2;
+    else                                totalMm = w;
+  }
+  const hangerPrice = Math.ceil(totalMm / 100) * 10000;
+  let optTotal = 0;
+  if (optRaw && !/없어요|없음|없습|아니오|아니요/i.test(optRaw)) {
+    for (const o of OPT_PRICES) {
+      if (o.re.test(optRaw)) { optTotal += o.price; break; }
+    }
+  }
+  return hangerPrice + optTotal;
+}
+
+async function saveConversation(sess, reason) {
+  if (!sess || !sess.messages || sess.messages.length === 0) return;
+  try {
+    const userMsgs = sess.messages.filter(m => m.role === 'user').map(m => m.content || '');
+    const fields = {
+      이름:       userMsgs[0] || '',
+      연락처:     userMsgs[1] || '',
+      설치지역:   userMsgs[2] || '',
+      공간사이즈: userMsgs[3] || '',
+      형태:       userMsgs[4] || '',
+      추가옵션:   userMsgs[5] || '',
+      프레임색상: userMsgs[6] || '',
+      선반색상:   userMsgs[7] || '',
+      요청사항:   userMsgs[8] || '',
+    };
+    const estimatedPrice = calcEstimatedPrice(fields.공간사이즈, fields.형태, fields.추가옵션);
+    await supabase.from('conversations').insert({
+      session_id:      sess.id,
+      save_reason:     reason,
+      customer_name:   sess.customerName || fields.이름 || null,
+      phone:           fields.연락처 || null,
+      region:          fields.설치지역 || null,
+      size_raw:        fields.공간사이즈 || null,
+      layout:          fields.형태 || null,
+      options_text:    fields.추가옵션 || null,
+      frame_color:     fields.프레임색상 || null,
+      shelf_color:     fields.선반색상 || null,
+      memo:            fields.요청사항 || null,
+      estimated_price: estimatedPrice || null,
+      message_count:   sess.messages.length,
+      started_at:      sess.startedAt,
+      messages:        sess.messages,
+    });
+    console.log(`💾 대화 저장 완료 (${reason}): ${sess.id.slice(0, 16)}…`);
+  } catch (err) {
+    console.error('대화 저장 실패:', err.message);
+  }
+}
+
+// 30분 이상 비활성 세션 정리 (메모리 관리) — 만료 전 대화 자동 저장
+setInterval(async () => {
   const now = Date.now();
   for (const [id, sess] of sessions) {
-    if (now - sess.lastActivity > 30 * 60 * 1000) sessions.delete(id);
+    if (now - sess.lastActivity > 30 * 60 * 1000) {
+      await saveConversation(sess, 'expired');
+      sessions.delete(id);
+    }
   }
 }, 5 * 60 * 1000);
 
@@ -763,6 +848,16 @@ app.post('/api/admin/message', (req, res) => {
   sess.lastActivity = new Date();
   sess.lastMessageAt = new Date();
 
+  res.json({ ok: true });
+});
+
+// ── 어드민: 대화 수동 저장 ────────────────────────────────────
+app.post('/api/admin/save-conversation', async (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) return res.status(400).json({ error: 'sessionId 필요' });
+  const sess = sessions.get(sessionId);
+  if (!sess) return res.status(404).json({ error: '세션 없음' });
+  await saveConversation(sess, 'manual');
   res.json({ ok: true });
 });
 
