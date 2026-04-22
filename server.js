@@ -863,7 +863,7 @@ app.get('/api/admin/conversations', async (req, res) => {
     const { data, error } = await supabase
       .from('conversations')
       .select('*')
-      .order('saved_at', { ascending: false })
+      .order('id', { ascending: false })
       .limit(200);
     if (error) throw error;
     res.json({ conversations: data });
