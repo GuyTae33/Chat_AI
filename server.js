@@ -862,7 +862,7 @@ app.get('/api/admin/conversations', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('conversations')
-      .select('id,session_id,saved_at,save_reason,customer_name,phone,region,size_raw,layout,options_text,frame_color,shelf_color,memo,estimated_price,message_count,started_at')
+      .select('*')
       .order('saved_at', { ascending: false })
       .limit(200);
     if (error) throw error;
