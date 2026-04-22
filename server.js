@@ -297,16 +297,16 @@ app.get('/api/consultation-history', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('conversations')
-      .select('id, created_at, messages, summary')
-      .not('summary', 'is', null)
-      .order('created_at', { ascending: false })
+      .select('id, saved_at, messages, customer_name, phone, region, layout, size_raw, estimated_price')
+      .not('phone', 'is', null)
+      .order('saved_at', { ascending: false })
       .limit(30);
 
     if (error) throw error;
 
     // 전화번호 정규화 후 필터링
     const filtered = (data || []).filter(row => {
-      const p = (row.summary?.연락처 || '').replace(/[-\s]/g, '');
+      const p = (row.phone || '').replace(/[-\s]/g, '');
       return p && p === cleanPhone;
     });
 
