@@ -47,12 +47,24 @@ let serverOnline   = null;
 const HISTORY_KEY  = '루마네_히스토리';
 const ARCHIVE_KEY  = '루마네_히스토리_아카이브';
 
+const HISTORY_TS_KEY = '루마네_히스토리_시각';
+const SESSION_EXPIRE = 60 * 60 * 1000; // 1시간
+
 function saveHistory() {
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch { /* 무시 */ }
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    localStorage.setItem(HISTORY_TS_KEY, String(Date.now()));
+  } catch { /* 무시 */ }
 }
 
 function loadHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+}
+
+function isSessionExpired() {
+  const ts = localStorage.getItem(HISTORY_TS_KEY);
+  if (!ts) return false;
+  return Date.now() - Number(ts) > SESSION_EXPIRE;
 }
 
 const ARCHIVE_TTL = 7 * 24 * 60 * 60 * 1000; // 7일
@@ -656,7 +668,16 @@ async function startChat() {
   checkServer().then(async () => {
     const savedHistory = loadHistory();
 
-    if (savedHistory.length > 0) {
+    if (savedHistory.length > 0 && isSessionExpired()) {
+      /* ── 1시간 이상 경과 → 아카이브 후 새 채팅 ── */
+      history = savedHistory;
+      archiveCurrent();
+      history = [];
+      clearHistory();
+      clearMessages();
+      greet();
+      if (serverOnline) { registerSession(); startPolling(); }
+    } else if (savedHistory.length > 0) {
       /* ── 새로고침 복원: 저장된 대화 화면에 다시 표시 ── */
       history = savedHistory;
       try {
