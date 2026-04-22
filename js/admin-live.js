@@ -602,10 +602,14 @@ async function saveConversationManual() {
       headers: adminHeaders(),
       body: JSON.stringify({ sessionId: liveSelectedId }),
     });
-    if (!res.ok) throw new Error();
+    if (!res.ok) {
+      let detail = '';
+      try { const d = await res.json(); detail = d.error || ''; } catch(_) {}
+      throw new Error(detail || res.status);
+    }
     showToast('💾 대화가 저장되었습니다.', 'success');
-  } catch {
-    showToast('❌ 저장에 실패했습니다', 'error');
+  } catch (err) {
+    showToast(`❌ 저장 실패: ${err.message}`, 'error');
   }
 }
 

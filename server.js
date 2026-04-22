@@ -246,6 +246,7 @@ async function saveConversation(sess, reason) {
     console.log(`💾 대화 저장 완료 (${reason}): ${sess.id.slice(0, 16)}…`);
   } catch (err) {
     console.error('대화 저장 실패:', err.message);
+    throw err;
   }
 }
 
@@ -893,8 +894,12 @@ app.post('/api/admin/save-conversation', async (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'sessionId 필요' });
   const sess = sessions.get(sessionId);
   if (!sess) return res.status(404).json({ error: '세션 없음' });
-  await saveConversation(sess, 'manual');
-  res.json({ ok: true });
+  try {
+    await saveConversation(sess, 'manual');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── 견적 목록 API (임시: 메모리 세션에서 접수 완료된 항목 반환) ──
