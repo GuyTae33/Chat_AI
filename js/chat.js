@@ -55,13 +55,21 @@ function loadHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
 }
 
+const ARCHIVE_TTL = 7 * 24 * 60 * 60 * 1000; // 7일
+
+function pruneArchive(archive) {
+  const cutoff = Date.now() - ARCHIVE_TTL;
+  return archive.filter(item => item.timestamp && item.timestamp > cutoff);
+}
+
 function archiveCurrent() {
   if (!history || history.length === 0) return;
   try {
-    const archive = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    const raw = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
+    const archive = pruneArchive(raw);
     const now = new Date();
     const label = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    archive.unshift({ savedAt: label, messages: [...history] });
+    archive.unshift({ savedAt: label, timestamp: Date.now(), messages: [...history] });
     if (archive.length > 10) archive.length = 10;
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
   } catch { /* 무시 */ }
