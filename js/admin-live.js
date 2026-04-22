@@ -273,11 +273,87 @@ async function fetchLiveSessionMsgs() {
 }
 
 /**
+ * 대화 메시지에서 상담 필드 추출 (chat.js의 extractFromHistory와 동일 순서)
+ */
+function extractSessionFields(messages) {
+  const userMsgs = (messages || []).filter(m => m.role === 'user').map(m => m.content || '');
+  return {
+    이름:       userMsgs[0] || '',
+    연락처:     userMsgs[1] || '',
+    설치지역:   userMsgs[2] || '',
+    공간사이즈: userMsgs[3] || '',
+    형태:       userMsgs[4] || '',
+    추가옵션:   userMsgs[5] || '',
+    프레임색상: userMsgs[6] || '',
+    선반색상:   userMsgs[7] || '',
+    요청사항:   userMsgs[8] || '',
+  };
+}
+
+function toggleLiveSummary() {
+  const body    = document.getElementById('liveSummaryBody');
+  const chevron = document.getElementById('liveSummaryChevron');
+  if (!body) return;
+  const collapsed = body.style.display === 'none';
+  body.style.display    = collapsed ? '' : 'none';
+  chevron.style.transform = collapsed ? '' : 'rotate(180deg)';
+}
+
+function renderLiveSummary(sess) {
+  const wrap = document.getElementById('liveSummary');
+  if (!wrap) return;
+  const f = extractSessionFields(sess.messages || []);
+  const startedAt = sess.startedAt
+    ? new Date(sess.startedAt).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+    : '-';
+  const modeLabel = sess.mode === 'admin' ? '<span style="color:#7c3aed;font-weight:700;">👩‍💼 담당자 상담 중</span>' : '<span style="color:#22c55e;font-weight:700;">🤖 AI 응답 중</span>';
+
+  const row = (label, val, required = false) => {
+    const empty = !val || val === '-' || val.trim() === '';
+    const display = empty ? `<span style="color:#d1d5db;">미수집</span>` : escAdmin(val.length > 60 ? val.slice(0, 60) + '…' : val);
+    const dot = required && empty ? `<span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block;margin-right:4px;flex-shrink:0;"></span>` : '';
+    return `<div style="display:flex;gap:6px;align-items:baseline;min-width:0;padding:2px 0;">
+      <span style="font-size:11px;color:#9ca3af;white-space:nowrap;min-width:64px;flex-shrink:0;">${dot}${label}</span>
+      <span style="font-size:12.5px;color:#1f2937;word-break:break-all;">${display}</span>
+    </div>`;
+  };
+
+  const body = document.getElementById('liveSummaryBody');
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px;">
+      ${row('성함', f.이름, true)}
+      ${row('연락처', f.연락처, true)}
+      ${row('설치지역', f.설치지역, true)}
+      ${row('공간사이즈', f.공간사이즈, true)}
+      ${row('드레스룸형태', f.형태, true)}
+      <div style="display:flex;gap:6px;align-items:baseline;padding:2px 0;">
+        <span style="font-size:11px;color:#9ca3af;white-space:nowrap;min-width:64px;flex-shrink:0;">접수일시</span>
+        <span style="font-size:12.5px;color:#1f2937;">${startedAt}</span>
+      </div>
+    </div>
+    <div style="margin-top:6px;padding-top:6px;border-top:1px dashed #e5e7eb;display:flex;gap:6px;align-items:baseline;">
+      <span style="font-size:11px;color:#9ca3af;white-space:nowrap;min-width:64px;flex-shrink:0;">현재상태</span>
+      <span style="font-size:12.5px;">${modeLabel}</span>
+    </div>
+    ${(f.추가옵션 || f.프레임색상 || f.선반색상 || f.요청사항) ? `
+    <div style="margin-top:6px;padding-top:6px;border-top:1px dashed #e5e7eb;display:grid;grid-template-columns:1fr 1fr;gap:0 12px;">
+      ${f.추가옵션  ? row('추가옵션',   f.추가옵션)  : ''}
+      ${f.프레임색상 ? row('프레임색상', f.프레임색상) : ''}
+      ${f.선반색상  ? row('선반색상',   f.선반색상)  : ''}
+      ${f.요청사항  ? row('요청사항',   f.요청사항)  : ''}
+    </div>` : ''}
+  `;
+  wrap.style.display = '';
+}
+
+/**
  * 오른쪽 채팅 패널 렌더링
  */
 function renderLiveChatPanel(sess) {
   const isAdmin = sess.mode === 'admin';
   liveAdminMode = isAdmin;
+
+  renderLiveSummary(sess);
 
   document.getElementById('livePanelTitle').textContent =
     `💬 ${sess.customerName || '(이름 미수집)'}`;
