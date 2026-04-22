@@ -272,6 +272,63 @@ async function fetchLiveSessionMsgs() {
   } catch { /* 무시 */ }
 }
 
+/* ── 단가 계산 (참고용 개략 견적) ── */
+const _OPT_PRICES = [
+  { re: /이불긴장/,                                price: 350_000, label: '이불긴장' },
+  { re: /이불장/,                                  price: 200_000, label: '이불장' },
+  { re: /화장대/,                                  price: 250_000, label: '화장대' },
+  { re: /아일랜드장.{0,5}손잡이|손잡이.{0,5}아일랜드장/, price: 219_000, label: '아일랜드장(손잡이)' },
+  { re: /아일랜드장/,                              price: 169_000, label: '아일랜드장' },
+  { re: /거울장/,                                  price: 169_000, label: '거울장' },
+  { re: /4단\s*서랍/,                              price: 160_000, label: '4단서랍' },
+  { re: /3단\s*서랍/,                              price: 119_000, label: '3단서랍' },
+  { re: /2단\s*서랍/,                              price:  99_000, label: '2단서랍' },
+  { re: /서랍(?!장)/,                              price:  99_000, label: '서랍(2단추정)' },
+  { re: /바지걸이/,                                price: 138_000, label: '바지걸이' },
+  { re: /디바이더/,                                price:  69_000, label: '디바이더' },
+  { re: /7단\s*코너/,                              price: 120_000, label: '7단코너선반' },
+  { re: /6단\s*코너/,                              price:  90_000, label: '6단코너선반' },
+  { re: /5단\s*코너/,                              price:  60_000, label: '5단코너선반' },
+  { re: /7단\s*선반/,                              price:  80_000, label: '7단선반' },
+  { re: /6단\s*선반/,                              price:  60_000, label: '6단선반' },
+  { re: /5단\s*선반/,                              price:  40_000, label: '5단선반' },
+];
+
+function calcEstimate(fields) {
+  const sizeRaw = fields.공간사이즈 || '';
+  const layout  = fields.형태 || '';
+  const optRaw  = fields.추가옵션 || '';
+
+  // 공간사이즈에서 3자리 이상 숫자 추출 (mm 단위 가정)
+  const nums = sizeRaw.replace(/[×xX×]/g, ' ').match(/\d{3,4}/g) || [];
+  const w = parseInt(nums[0] || '0', 10); // 가로
+  const d = parseInt(nums[1] || '0', 10); // 세로(깊이)
+
+  let totalMm = 0;
+  if (w > 0) {
+    if (/ㄷ|U자|U형/.test(layout))       totalMm = w + d * 2;
+    else if (/ㄱ|L자|L형/.test(layout))  totalMm = w + d;
+    else if (/ㅁ|사방/.test(layout))     totalMm = (w + d) * 2;
+    else                                 totalMm = w; // 일자 or unknown
+  }
+
+  const totalCm = totalMm / 10;
+  const hangerUnits = Math.ceil(totalCm / 10);
+  const hangerPrice = hangerUnits * 10_000;
+
+  // 옵션 파싱 (없음/없어요 → skip)
+  const optItems = [];
+  if (optRaw && !/없어요|없음|없습|아니오|아니요/i.test(optRaw)) {
+    for (const o of _OPT_PRICES) {
+      if (o.re.test(optRaw)) optItems.push(o);
+    }
+  }
+  const optTotal = optItems.reduce((s, o) => s + o.price, 0);
+  const total = hangerPrice + optTotal;
+
+  return { totalCm, hangerPrice, optItems, optTotal, total, hasDim: totalMm > 0 };
+}
+
 /**
  * 대화 메시지에서 상담 필드 추출 (chat.js의 extractFromHistory와 동일 순서)
  */
@@ -342,6 +399,24 @@ function renderLiveSummary(sess) {
       ${f.선반색상  ? row('선반색상',   f.선반색상)  : ''}
       ${f.요청사항  ? row('요청사항',   f.요청사항)  : ''}
     </div>` : ''}
+    ${(() => {
+      const est = calcEstimate(f);
+      if (!est.hasDim && est.optItems.length === 0) return '';
+      const fmt = n => n.toLocaleString('ko-KR') + '원';
+      const hangerRow = est.hasDim
+        ? `<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">기본행거 ${Math.round(est.totalCm)}cm</span><span>${fmt(est.hangerPrice)}</span></div>`
+        : '';
+      const optRows = est.optItems.map(o =>
+        `<div style="display:flex;justify-content:space-between;"><span style="color:#6b7280;">${o.label}</span><span>${fmt(o.price)}</span></div>`
+      ).join('');
+      const totalRow = `<div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid #d1d5db;margin-top:4px;padding-top:4px;"><span>합계 (참고)</span><span style="color:#c9a96e;">${fmt(est.total)}</span></div>`;
+      return `
+      <div style="margin-top:8px;padding:8px 10px;background:#fffbf0;border:1px solid #e8d5a3;border-radius:8px;font-size:12px;line-height:1.8;">
+        <div style="font-size:11px;font-weight:600;color:#a07830;margin-bottom:4px;">💰 예상 단가 (참고용)</div>
+        ${hangerRow}${optRows}${totalRow}
+        <div style="font-size:10px;color:#b0915a;margin-top:3px;">배송비 별도 · 도면 확정 전 기준</div>
+      </div>`;
+    })()}
   `;
   wrap.style.display = '';
 }
