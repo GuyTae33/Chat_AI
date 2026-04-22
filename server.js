@@ -245,6 +245,29 @@ async function saveConversation(sess, reason) {
     });
     if (insertErr) throw new Error(insertErr.message);
     console.log(`💾 대화 저장 완료 (${reason}): ${sess.id.slice(0, 16)}…`);
+
+    // Make → Notion 전달
+    const MAKE_WEBHOOK = 'https://hook.eu1.make.com/qeavmmuovr1iqez3m7z9lvvfv2uqaj8t';
+    fetch(MAKE_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id:      sess.id,
+        save_reason:     reason,
+        customer_name:   sess.customerName || fields.이름 || null,
+        phone:           fields.연락처 || null,
+        region:          fields.설치지역 || null,
+        size_raw:        fields.공간사이즈 || null,
+        layout:          fields.형태 || null,
+        options_text:    fields.추가옵션 || null,
+        frame_color:     fields.프레임색상 || null,
+        shelf_color:     fields.선반색상 || null,
+        memo:            fields.요청사항 || null,
+        estimated_price: estimatedPrice || null,
+        message_count:   sess.messages.length,
+        saved_at:        new Date().toISOString(),
+      }),
+    }).catch(e => console.error('Make 웹훅 전송 실패:', e.message));
   } catch (err) {
     console.error('대화 저장 실패:', err.message);
     throw err;
