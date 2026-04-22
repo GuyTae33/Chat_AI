@@ -912,6 +912,35 @@ app.get('/api/admin/conversations/:id', async (req, res) => {
   }
 });
 
+// ── 어드민: Notion 재전송 ─────────────────────────────────────
+app.post('/api/admin/conversations/:id/resend-notion', async (req, res) => {
+  try {
+    const { data: c, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (error) throw error;
+    const MAKE_WEBHOOK = 'https://hook.eu1.make.com/xalfs9y2jj2doxoikl3se5j3j3jve8f0';
+    const wr = await fetch(MAKE_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: c.session_id, save_reason: c.save_reason,
+        customer_name: c.customer_name, phone: c.phone, region: c.region,
+        size_raw: c.size_raw, layout: c.layout, options_text: c.options_text,
+        frame_color: c.frame_color, shelf_color: c.shelf_color, memo: c.memo,
+        estimated_price: c.estimated_price, message_count: c.message_count,
+        saved_at: c.saved_at,
+      }),
+    });
+    if (!wr.ok) throw new Error('웹훅 전송 실패');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── 어드민: 대화 수동 저장 ────────────────────────────────────
 app.post('/api/admin/save-conversation', async (req, res) => {
   const { sessionId } = req.body;

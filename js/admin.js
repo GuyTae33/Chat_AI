@@ -580,7 +580,29 @@ function renderHistoryList(list) {
   }).join('');
 }
 
+let _currentHistoryId = null;
+
+async function resendToNotion() {
+  if (!_currentHistoryId) return;
+  const btn = document.getElementById('hdNotionBtn');
+  btn.textContent = '전송 중…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${SERVER}/api/admin/conversations/${_currentHistoryId}/resend-notion`, {
+      method: 'POST', headers: adminHeaders(),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.status); }
+    btn.textContent = '✅ 전송 완료';
+  } catch (err) {
+    btn.textContent = '❌ 실패';
+    showToast(`Notion 재전송 실패: ${err.message}`, 'error');
+  } finally {
+    setTimeout(() => { btn.textContent = '📋 Notion 재전송'; btn.disabled = false; }, 3000);
+  }
+}
+
 async function openHistoryDetail(id) {
+  _currentHistoryId = id;
   const overlay = document.getElementById('historyDetailOverlay');
   overlay.style.display = 'flex';
   document.getElementById('hdTitle').textContent = '불러오는 중…';

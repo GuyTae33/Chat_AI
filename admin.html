@@ -402,7 +402,10 @@
           <div id="hdTitle" style="font-size:16px;font-weight:700;"></div>
           <div id="hdMeta" style="font-size:11px;color:#9ca3af;margin-top:2px;"></div>
         </div>
-        <button onclick="closeHistoryDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;">✕</button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button id="hdNotionBtn" onclick="resendToNotion()" style="background:#000;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px;">📋 Notion 재전송</button>
+          <button onclick="closeHistoryDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;">✕</button>
+        </div>
       </div>
       <div id="hdSummary" style="padding:14px 20px;border-bottom:1px solid #e5e7eb;background:#fafafa;font-size:12.5px;line-height:1.9;"></div>
       <div id="hdMsgs" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:8px;background:#f9fafb;"></div>
