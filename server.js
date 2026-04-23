@@ -236,6 +236,9 @@ function parseOrderSheet(text) {
 // ── 실시간 Supabase upsert (Notion 없음) ─────────────────────
 async function upsertConversation(sess) {
   if (!sess || !sess.messages || sess.messages.length === 0) return;
+  // 고객 메시지가 하나도 없으면 저장하지 않음 (인사만 보고 나간 경우)
+  const userMsgCount = sess.messages.filter(m => m.role === 'user').length;
+  if (userMsgCount === 0) return;
   try {
     const orderMsg = [...sess.messages].reverse().find(m =>
       m.role === 'assistant' && m.content && m.content.includes('주문서')
