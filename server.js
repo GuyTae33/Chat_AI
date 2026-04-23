@@ -974,6 +974,10 @@ app.post('/api/admin/conversations/:id/resend-notion', async (req, res) => {
       .single();
     if (error) throw error;
     const MAKE_WEBHOOK = 'https://hook.eu1.make.com/xalfs9y2jj2doxoikl3se5j3j3jve8f0';
+    const msgs = Array.isArray(c.messages) ? c.messages : [];
+    const conversation = msgs.map(m =>
+      `${m.role === 'user' ? '고객' : '루마네'}: ${m.content || ''}`
+    ).join('\n');
     const wr = await fetch(MAKE_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -983,7 +987,7 @@ app.post('/api/admin/conversations/:id/resend-notion', async (req, res) => {
         size_raw: c.size_raw, layout: c.layout, options_text: c.options_text,
         frame_color: c.frame_color, shelf_color: c.shelf_color, memo: c.memo,
         estimated_price: c.estimated_price, message_count: c.message_count,
-        saved_at: c.saved_at,
+        saved_at: c.saved_at, conversation,
       }),
     });
     if (!wr.ok) throw new Error('웹훅 전송 실패');
