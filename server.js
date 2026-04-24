@@ -292,8 +292,8 @@ async function saveConversation(sess, reason) {
 
     console.log(`💾 대화 저장 완료 (${reason}): ${sess.id.slice(0, 16)}…`);
 
-    // Make → Notion 전달 (대화 종료 시에만)
-    const MAKE_WEBHOOK = 'https://hook.eu1.make.com/xalfs9y2jj2doxoikl3se5j3j3jve8f0';
+    // Make → Notion 전달 (대화 종료 시에만) — 임시 비활성화
+    /* const MAKE_WEBHOOK = 'https://hook.eu1.make.com/xalfs9y2jj2doxoikl3se5j3j3jve8f0';
     const conversation = sess.messages.map(m =>
       `${m.role === 'user' ? '고객' : '루마네'}: ${(m.content || '').replace(/"/g, "'").replace(/\\/g, '').replace(/[\r\n\t]/g, ' ')}`
     ).join(' | ');
@@ -313,7 +313,7 @@ async function saveConversation(sess, reason) {
         saved_at:        new Date().toISOString(),
         conversation,
       }),
-    }).catch(e => console.error('Make 웹훅 전송 실패:', e.message));
+    }).catch(e => console.error('Make 웹훅 전송 실패:', e.message)); */
   } catch (err) {
     console.error('대화 저장 실패:', err.message);
     throw err;
