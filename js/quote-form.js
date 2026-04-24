@@ -62,20 +62,6 @@ function compressImage(file, maxW = 1200, quality = 0.78) {
   });
 }
 
-// ── 청크 저장 (큰 파일 분할) ──────────────────
-async function savePhotoChunks(recordId, fileName, fileData) {
-  const CHUNK = 60000;
-  const total = Math.ceil(fileData.length / CHUNK);
-  for (let i = 0; i < total; i++) {
-    const chunk = fileData.slice(i * CHUNK, (i + 1) * CHUNK);
-    await fetch(apiUrl('tables/quote_photos'), {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quote_id: recordId, file_name: fileName, chunk_index: i, total_chunks: total, chunk_data: chunk }),
-    });
-  }
-}
-
 function apiUrl(path) {
   return location.origin + '/' + path;
 }
@@ -169,18 +155,13 @@ async function submitQuote(event) {
       has_photo:      fileName ? '사진있음' : '',
     };
 
-    const res = await fetch(apiUrl('tables/quote_requests'), {
+    const res = await fetch(apiUrl('api/quote'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(textPayload),
     });
     if (!res.ok) throw new Error(`저장 실패: ${res.status}`);
-    const saved = await res.json();
-
-    if (fileData && fileName) {
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 사진 저장 중...';
-      try { await savePhotoChunks(saved.id, fileName, fileData); } catch { /* 사진 실패는 무시 */ }
-    }
+    await res.json();
 
     document.getElementById('quote-form').style.display = 'none';
     const successEl = document.getElementById('quote-success');

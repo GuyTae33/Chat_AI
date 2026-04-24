@@ -1072,18 +1072,85 @@ app.post('/api/admin/save-conversation', async (req, res) => {
 });
 
 // ── 견적 목록 API (임시: 메모리 세션에서 접수 완료된 항목 반환) ──
-app.get('/api/quotes', (req, res) => {
-  const quotes = Object.values(sessions)
-    .filter(s => s.status === '접수완료' || s.status === '견적완료')
-    .map(s => ({
-      id: s.id,
-      name: s.customerName || s.guestName || '미입력',
-      phone: s.phone || '',
-      region: s.region || '',
-      createdAt: s.createdAt,
-      status: s.status,
+app.get('/api/quotes', async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('견적접수')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const quotes = (data || []).map(r => ({
+      id: r.id,
+      접수번호: r.quote_number || `KB-${String(r.id).padStart(4, '0')}`,
+      접수시간: r.created_at,
+      상태: r.status || '접수',
+      담당자: r.manager || '',
+      메모: r.memo || '',
+      고객정보: {
+        이름: r.name || '',
+        연락처: r.phone || '',
+        설치지역: r.region || '',
+        공간형태: r.layout_type || '',
+        공간사이즈: `가로 ${r.width || 0}cm × 세로 ${r.depth || 0}cm × 높이 ${r.height || 0}cm`,
+        추가옵션: r.options || [],
+        프레임색상: r.frame_color || '',
+        선반색상: r.shelf_color || '',
+        요청사항: r.request_memo || '',
+        개인정보동의: r.privacy_agreed ? '동의' : '미동의',
+      },
+      사진여부: r.has_photo || '',
+      파일명: r.file_name || '',
     }));
-  res.json({ quotes });
+    res.json({ quotes });
+  } catch (err) {
+    console.error('견적 목록 조회 오류:', err.message);
+    res.json({ quotes: [] });
+  }
+});
+
+app.post('/api/quote', async (req, res) => {
+  try {
+    const {
+      name, phone, region,
+      width, depth, height,
+      layout_type, options,
+      frame_color, shelf_color,
+      request_memo, has_photo, file_name,
+    } = req.body;
+
+    const quoteNumber = 'KB-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + String(Date.now()).slice(-4);
+
+    const { data, error } = await supabase
+      .from('견적접수')
+      .insert([{
+        quote_number: quoteNumber,
+        name:          name || '',
+        phone:         phone || '',
+        region:        region || '',
+        width:         parseFloat(width) || 0,
+        depth:         parseFloat(depth) || 0,
+        height:        parseFloat(height) || 0,
+        layout_type:   layout_type || '',
+        options:       Array.isArray(options) ? options : [],
+        frame_color:   frame_color || '',
+        shelf_color:   shelf_color || '',
+        request_memo:  request_memo || '',
+        privacy_agreed: true,
+        has_photo:     has_photo || '',
+        file_name:     file_name || '',
+        status:        '접수',
+      }])
+      .select('id')
+      .single();
+
+    if (error) throw error;
+    console.log(`✅ 견적 접수됨: ${quoteNumber} (ID: ${data.id})`);
+    res.json({ success: true, id: data.id, quote_number: quoteNumber });
+  } catch (err) {
+    console.error('❌ 견적 저장 오류:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── 대화 저장 API ─────────────────────────────────────────────
