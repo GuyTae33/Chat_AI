@@ -559,11 +559,10 @@ function renderHistoryList(list) {
   listEl.innerHTML = list.map(c => {
     const savedAt = c.saved_at ? new Date(c.saved_at).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '-';
     return `
-    <div onclick="openHistoryDetail('${escAdmin(c.id)}')"
-      style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 18px;cursor:pointer;transition:box-shadow .15s;display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:start;"
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 18px;transition:box-shadow .15s;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;"
       onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'"
       onmouseout="this.style.boxShadow='none'">
-      <div>
+      <div onclick="openHistoryDetail('${escAttr(c.id)}')" style="cursor:pointer;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:15px;font-weight:700;">${escAdmin(c.customer_name || '(이름 미수집)')}</span>
           ${badge(c.save_reason)}
@@ -575,9 +574,11 @@ function renderHistoryList(list) {
           <span>💬 ${c.message_count || 0}개</span>
         </div>
       </div>
-      <div style="text-align:right;flex-shrink:0;">
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
         <div style="font-size:14px;font-weight:700;color:#c9a96e;">${fmt(c.estimated_price)}</div>
-        <div style="font-size:11px;color:#9ca3af;margin-top:3px;">${savedAt}</div>
+        <div style="font-size:11px;color:#9ca3af;">${savedAt}</div>
+        <button onclick="deleteConversationById('${escAttr(c.id)}')"
+          style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">🗑 삭제</button>
       </div>
     </div>`;
   }).join('');
@@ -672,6 +673,20 @@ async function openHistoryDetail(id) {
 function closeHistoryDetail(e) {
   if (e && e.target !== document.getElementById('historyDetailOverlay')) return;
   document.getElementById('historyDetailOverlay').style.display = 'none';
+}
+
+async function deleteConversationById(id) {
+  if (!confirm('이 상담 기록을 삭제하시겠습니까? 복구할 수 없습니다.')) return;
+  try {
+    const res = await fetch(`${SERVER}/api/admin/conversations/${encodeURIComponent(id)}`, {
+      method: 'DELETE', headers: adminHeaders(),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.status); }
+    showToast('상담 기록이 삭제됐습니다.', 'success');
+    loadHistory();
+  } catch (err) {
+    showToast(`삭제 실패: ${err.message}`, 'error');
+  }
 }
 
 async function deleteConversation() {
