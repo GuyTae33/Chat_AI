@@ -671,6 +671,27 @@ function closeHistoryDetail(e) {
   document.getElementById('historyDetailOverlay').style.display = 'none';
 }
 
+async function registerQuoteFromConversation() {
+  if (!_currentHistoryId) return;
+  const btn = document.getElementById('hdRegisterQuoteBtn');
+  btn.textContent = '등록 중…';
+  btn.disabled = true;
+  try {
+    const res = await fetch(`${SERVER}/api/admin/conversations/${encodeURIComponent(_currentHistoryId)}/register-quote`, {
+      method: 'POST', headers: adminHeaders(),
+    });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.error || res.status); }
+    btn.textContent = '✅ 등록 완료';
+    showToast('견적 목록에 등록됐습니다!', 'success');
+    loadQuotes();
+  } catch (err) {
+    btn.textContent = '❌ 실패';
+    showToast(`등록 실패: ${err.message}`, 'error');
+  } finally {
+    setTimeout(() => { btn.textContent = '📋 견적접수 등록'; btn.disabled = false; }, 3000);
+  }
+}
+
 /* ================================================================
    앱 초기화
 ================================================================ */

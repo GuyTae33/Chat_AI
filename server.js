@@ -1000,6 +1000,47 @@ app.post('/api/admin/conversations/:id/resend-notion', async (req, res) => {
   }
 });
 
+// ── 어드민: 대화 → 견적접수 등록 ─────────────────────────────
+app.post('/api/admin/conversations/:id/register-quote', requireAdmin, async (req, res) => {
+  try {
+    const { data: c, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (error) throw error;
+
+    const quoteNumber = 'KB-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + String(Date.now()).slice(-4);
+
+    const { error: insErr } = await supabase
+      .from('견적접수')
+      .insert([{
+        quote_number:  quoteNumber,
+        name:          c.customer_name || '',
+        phone:         c.phone || '',
+        region:        c.region || '',
+        width:         0,
+        depth:         0,
+        height:        0,
+        layout_type:   c.layout || '',
+        options:       c.options_text ? [c.options_text] : [],
+        frame_color:   c.frame_color || '',
+        shelf_color:   c.shelf_color || '',
+        request_memo:  [c.size_raw, c.memo].filter(Boolean).join(' / '),
+        privacy_agreed: true,
+        status:        '접수',
+        source:        'AI상담',
+      }]);
+    if (insErr) throw insErr;
+
+    console.log(`✅ AI상담 → 견적접수 등록: ${quoteNumber}`);
+    res.json({ ok: true, quote_number: quoteNumber });
+  } catch (err) {
+    console.error('견적접수 등록 오류:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── 어드민: 저장된 상담 Claude 재파싱 ──────────────────────────
 app.post('/api/admin/conversations/:id/reparse', async (req, res) => {
   try {
