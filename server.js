@@ -233,6 +233,43 @@ function parseOrderSheet(text) {
   };
 }
 
+// ── AI 견적 자동 등록 (주문서 출력 시 견적접수 테이블에 저장) ──
+async function autoRegisterQuote(sess, reply) {
+  if (!reply.includes('총 합계')) return;
+  const parsed = parseOrderSheet(reply);
+  if (!parsed.estimated_price) return;
+
+  const quoteNumber = 'KB-AI-' + sess.id.slice(-8).toUpperCase();
+
+  const payload = {
+    quote_number:   quoteNumber,
+    name:           parsed.customer_name || sess.customerName || '',
+    phone:          parsed.phone || '',
+    region:         parsed.region || '',
+    layout_type:    parsed.layout || '',
+    frame_color:    parsed.frame_color || '',
+    shelf_color:    parsed.shelf_color || '',
+    options:        parsed.options_text ? parsed.options_text.split(' / ').filter(Boolean) : [],
+    request_memo:   parsed.size_raw || '',
+    privacy_agreed: true,
+    status:         '접수',
+    source:         'AI상담',
+  };
+
+  const { data: existing } = await supabase
+    .from('견적접수')
+    .select('id')
+    .eq('quote_number', quoteNumber)
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from('견적접수').update(payload).eq('id', existing.id);
+  } else {
+    await supabase.from('견적접수').insert([payload]);
+    console.log(`✅ AI 견적 자동 등록: ${quoteNumber} (${payload.name})`);
+  }
+}
+
 // ── 실시간 Supabase upsert (Notion 없음) ─────────────────────
 async function upsertConversation(sess) {
   if (!sess || !sess.messages || sess.messages.length === 0) return;
@@ -689,6 +726,7 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
       sess.messages.push({ role: 'assistant', content: reply, ts: new Date().toISOString() });
       sess.lastActivity = new Date();
       upsertConversation(sess).catch(e => console.error('실시간 저장 실패:', e.message));
+      autoRegisterQuote(sess, reply).catch(e => console.error('견적 자동 등록 실패:', e.message));
     }
 
     res.json({ message: reply });
