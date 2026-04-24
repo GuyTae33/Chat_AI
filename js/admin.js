@@ -472,10 +472,13 @@ async function loadTokenStats() {
     } else {
       const maxCost = Math.max(...dates.map(d => byDate[d].costKRW), 1);
       chartEl.innerHTML = dates.map(date => {
-        const pct = Math.max(4, Math.round((byDate[date].costKRW / maxCost) * 100));
-        return `<div title="${date}: ₩${byDate[date].costKRW.toLocaleString()}"
+        const pct  = Math.max(4, Math.round((byDate[date].costKRW / maxCost) * 100));
+        const info = byDate[date];
+        const tip  = encodeURIComponent(JSON.stringify({ date, costKRW: info.costKRW, input: info.input, output: info.output, sessions: info.sessions }));
+        return `<div
+          data-tip="${tip}"
           style="flex:1;min-width:28px;max-width:48px;height:${pct}%;background:#7c3aed;border-radius:4px 4px 0 0;cursor:default;transition:opacity .15s;"
-          onmouseenter="this.style.opacity='.7'" onmouseleave="this.style.opacity='1'"></div>`;
+          onmouseenter="showTkTooltip(event,this)" onmouseleave="hideTkTooltip()" onmousemove="moveTkTooltip(event)"></div>`;
       }).join('');
       labelEl.innerHTML = dates.map(date =>
         `<div style="flex:1;min-width:28px;max-width:48px;font-size:10px;color:#9ca3af;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${date.slice(5)}</div>`
@@ -690,6 +693,39 @@ async function registerQuoteFromConversation() {
   } finally {
     setTimeout(() => { btn.textContent = '📋 견적접수 등록'; btn.disabled = false; }, 3000);
   }
+}
+
+/* ================================================================
+   차트 툴팁
+================================================================ */
+
+function _escTip(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showTkTooltip(e, el) {
+  const tip = JSON.parse(decodeURIComponent(el.dataset.tip));
+  const tt  = document.getElementById('tk-tooltip');
+  tt.innerHTML =
+    `<div style="font-weight:700;margin-bottom:2px;">${_escTip(tip.date)}</div>` +
+    `<div>💰 ₩${_escTip(tip.costKRW.toLocaleString())}</div>` +
+    `<div>📥 입력 ${_escTip(tip.input.toLocaleString())} 토큰</div>` +
+    `<div>📤 출력 ${_escTip(tip.output.toLocaleString())} 토큰</div>` +
+    `<div>💬 ${_escTip(tip.sessions)}개 세션</div>`;
+  tt.style.display = 'block';
+  moveTkTooltip(e);
+}
+
+function moveTkTooltip(e) {
+  const tt = document.getElementById('tk-tooltip');
+  const x  = e.clientX + 14;
+  const y  = e.clientY - tt.offsetHeight - 8;
+  tt.style.left = Math.min(x, window.innerWidth - tt.offsetWidth - 8) + 'px';
+  tt.style.top  = Math.max(y, 8) + 'px';
+}
+
+function hideTkTooltip() {
+  document.getElementById('tk-tooltip').style.display = 'none';
 }
 
 /* ================================================================
