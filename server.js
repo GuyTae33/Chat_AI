@@ -370,9 +370,15 @@ setInterval(async () => {
 
 // ── 보안 헤더 (meta 태그 대신 HTTP 헤더로 설정) ──
 app.use((req, res, next) => {
-  res.setHeader('X-Frame-Options', 'DENY');
+  if (req.path === '/chat') {
+    // 같은 도메인 내 iframe 임베드 허용 (index.html 견적상담 섹션)
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+  } else {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+  }
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
   next();
 });
 

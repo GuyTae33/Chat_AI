@@ -21,7 +21,7 @@
       <nav class="main-nav">
         <a href="/"  class="nav-link active" data-page="/">홈</a>
         <a href="/blog"   class="nav-link"        data-page="/blog">블로그</a>
-        <a href="/chat"   class="nav-link nav-chat-link" data-page="/chat">💬 AI 상담</a>
+        <a href="/chat"   class="nav-link nav-chat-link" data-page="/chat">💬 견적상담</a>
         <a href="/quote"  class="nav-link"        data-page="/quote">견적요청</a>
       </nav>
       <div class="header-social">
@@ -44,7 +44,7 @@
     <div class="mobile-menu" id="mobile-menu">
       <a href="/"  onclick="closeMobileMenu()">홈</a>
       <a href="/blog"   onclick="closeMobileMenu()">블로그</a>
-      <a href="/chat"   onclick="closeMobileMenu()">💬 AI 상담</a>
+      <a href="/chat"   onclick="closeMobileMenu()">💬 견적상담</a>
       <a href="/quote"  onclick="closeMobileMenu()">견적요청</a>
       <div class="mobile-menu-social">
         <a href="http://pf.kakao.com/_qbxjwxb/" target="_blank" rel="noopener" class="mobile-social-link kakao"><i class="fas fa-comment-dots"></i> 카카오톡 채널</a>
@@ -66,7 +66,7 @@
         <p class="hero-sub">맞춤 설계 &nbsp;·&nbsp; 깔끔한 시공 &nbsp;·&nbsp; 다양한 옵션</p>
         <div class="hero-btns">
           <a href="/quote" class="btn btn-primary"><i class="fas fa-pencil-ruler"></i> 견적요청</a>
-          <a href="/chat"  class="btn btn-ghost"><i class="fas fa-robot"></i> AI 상담으로 견적받기</a>
+          <a href="/chat"  class="btn btn-ghost"><i class="fas fa-comments"></i> 견적상담 받기</a>
         </div>
       </div>
       <div class="hero-scroll-hint">
@@ -258,15 +258,22 @@
       </div>
     </section>
 
-    <!-- AI 상담 CTA -->
-    <section class="ai-cta-section">
-      <div class="ai-cta-inner">
-        <div class="ai-cta-bubble">
-          <p class="ai-cta-question">AI 상담하러 가시겠습니까?</p>
-          <p class="ai-cta-desc">공간 사이즈, 원하시는 형태, 색상만 알려주시면<br>맞춤 견적을 바로 안내해 드려요.</p>
-          <a href="/chat" class="btn btn-primary btn-lg ai-cta-btn">
-            <i class="fas fa-robot"></i> 네, AI 상담 시작하기
-          </a>
+    <!-- 견적상담 채팅 임베드 -->
+    <section class="chat-embed-section">
+      <div class="container" style="max-width:800px;">
+        <div class="section-badge">견적상담</div>
+        <h2 class="section-title">바로 상담받기</h2>
+        <p class="section-sub">공간 사이즈, 원하시는 형태, 색상만 알려주시면 맞춤 견적을 바로 안내해 드려요.</p>
+        <div class="chat-embed-wrap">
+          <iframe
+            src="/chat"
+            class="chat-embed-frame"
+            title="견적상담"
+            allow="clipboard-write"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            referrerpolicy="strict-origin-when-cross-origin"
+            loading="lazy"
+          ></iframe>
         </div>
       </div>
     </section>
@@ -457,7 +464,7 @@
             <a href="/">홈</a>
             <a href="/blog">블로그</a>
             <a href="/quote">견적요청</a>
-            <a href="/chat">AI 상담</a>
+            <a href="/chat">견적상담</a>
           </div>
           <div class="footer-social">
             <a href="http://pf.kakao.com/_qbxjwxb/"    target="_blank" rel="noopener" class="footer-social-icon footer-social-kakao"><i class="fas fa-comment-dots"></i></a>
