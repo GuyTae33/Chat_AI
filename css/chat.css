@@ -34,6 +34,19 @@ html, body {
 .embed-mode .page {
   box-shadow: none;
 }
+.embed-mode,
+.embed-mode body {
+  background: #f4f1ec;
+  height: 100%;
+}
+.embed-mode .page {
+  min-height: 100%;
+  padding: 0;
+}
+.embed-mode .shell {
+  max-width: 100%;
+  min-height: 100%;
+}
 
 /* ── PC 사이드 패널 기본 (모바일 hidden) ───────── */
 .pc-panel { display: none; }
