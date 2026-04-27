@@ -792,24 +792,42 @@ async function showAttachBar(rawFile) {
   if (!bar) return;
 
   const isImg = file.type.startsWith('image/');
-  bar.innerHTML = isImg
-    ? `<img src="${pendingObjectUrl}" class="attach-thumb" id="attachThumb" alt="" title="클릭하면 크게 보기">`
-    : `<span class="attach-icon">📎</span>`;
-  bar.innerHTML += `<span class="attach-fname">${file.name || 'screenshot.png'}</span>
-    <button class="attach-remove" id="attachRemoveBtn">✕</button>`;
 
-  bar.style.display = 'flex';
+  /* innerHTML 두 번 쓰기 대신 DOM API로 구성 — 이벤트 핸들러 손실 방지 */
+  bar.innerHTML = '';
 
   if (isImg) {
-    document.getElementById('attachThumb').addEventListener('click', () => {
-      showImageLightbox(pendingObjectUrl);
-    });
+    const thumb = document.createElement('img');
+    thumb.src = pendingObjectUrl;
+    thumb.className = 'attach-thumb';
+    thumb.id = 'attachThumb';
+    thumb.alt = '';
+    thumb.title = '클릭하면 크게 보기';
+    thumb.addEventListener('click', () => showImageLightbox(pendingObjectUrl));
+    bar.appendChild(thumb);
+  } else {
+    const icon = document.createElement('span');
+    icon.className = 'attach-icon';
+    icon.textContent = '📎';
+    bar.appendChild(icon);
   }
 
-  document.getElementById('attachRemoveBtn').addEventListener('click', () => {
+  const fname = document.createElement('span');
+  fname.className = 'attach-fname';
+  fname.textContent = file.name || 'screenshot.png';
+  bar.appendChild(fname);
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'attach-remove';
+  removeBtn.id = 'attachRemoveBtn';
+  removeBtn.textContent = '✕';
+  removeBtn.addEventListener('click', () => {
     clearPendingFile();
     $inp.focus();
   });
+  bar.appendChild(removeBtn);
+
+  bar.style.display = 'flex';
   refreshSendBtn();
   $inp.focus();
 }
@@ -916,7 +934,10 @@ function showImageLightbox(src) {
   const lb = document.createElement('div');
   lb.id = 'attachLightbox';
   lb.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px;';
-  lb.innerHTML = `<img src="${src}" style="max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6);">`;
+  const img = document.createElement('img');
+  img.src = src;
+  img.style.cssText = 'max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,.6);';
+  lb.appendChild(img);
   lb.addEventListener('click', () => lb.remove());
   document.body.appendChild(lb);
 }

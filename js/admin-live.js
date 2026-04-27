@@ -580,7 +580,7 @@ function renderLiveChatPanel(sess) {
       if (window._failedImgUrls.has(rawUrl)) {
         bubbleInner = replyQuoteHtml + `<span style="font-size:12px;color:#9ca3af;">[이미지 없음]</span>`;
       } else {
-        bubbleInner = replyQuoteHtml + `<img src="${safeUrl}" style="max-width:200px;border-radius:8px;display:block;cursor:pointer;" onclick="window.open('${safeUrl}','_blank','noopener,noreferrer')" onerror="this.style.display='none';window._failedImgUrls.add(this.src)">`;
+        bubbleInner = replyQuoteHtml + `<img src="${safeUrl}" style="max-width:200px;border-radius:8px;display:block;cursor:pointer;" onclick="window.open('${safeUrl}','_blank','noopener,noreferrer')" onerror="this.style.display='none';window._failedImgUrls.add('${safeUrl}')">`;
       }
     } else if (fileMatch) {
       const fname = fileMatch[1];

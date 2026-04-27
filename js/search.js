@@ -89,7 +89,7 @@ function scrollToMatch(idx) {
 
 function clearHighlights() {
   document.querySelectorAll('.search-hl').forEach(el => {
-    el.outerHTML = el.textContent; // mark 제거, 텍스트만 남김
+    el.replaceWith(document.createTextNode(el.textContent)); // mark 제거, 텍스트만 남김
   });
 }
 

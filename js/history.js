@@ -1,7 +1,7 @@
 /* ================================================================
    이전 상담 이력 드로어 — 목록 렌더링, 채팅 원문 오버레이
 ================================================================ */
-import { MOCK_PREV_HISTORY, SERVER } from './config.js';
+import { SERVER } from './config.js';
 import { esc } from './utils.js';
 import { addMsg } from './ui.js';
 
@@ -61,7 +61,7 @@ function transformRow(row, idx, arr) {
 /* 현재 사용할 목록 반환 */
 function currentList() {
   if (realHistoryData !== null) return realHistoryData;
-  return MOCK_PREV_HISTORY;
+  return [];
 }
 
 /* 전화번호로 직접 Supabase 조회 */
@@ -102,12 +102,8 @@ function renderHistoryList() {
   const container = document.getElementById('historyList');
   const list      = currentList();
 
-  /* 목업 안내 텍스트 제거 (실제 데이터 사용 시) */
   const badge = document.getElementById('historyCountBadge');
-  const metaSpan = badge?.nextElementSibling;
-  if (realHistoryData !== null && metaSpan) metaSpan.style.display = 'none';
-
-  badge.textContent = list.length + '건';
+  if (badge) badge.textContent = list.length + '건';
 
   /* 실제 데이터가 없으면(null = 아직 미조회) 상단에 전화번호 입력창 표시 */
   const phoneFormHtml = realHistoryData === null ? `
