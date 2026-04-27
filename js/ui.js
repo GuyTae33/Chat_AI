@@ -87,9 +87,70 @@ export function initInputListeners(onSend) {
   $sendBtn.addEventListener('click', onSend);
 }
 
-/* ── 스크롤 ── */
+/* ── 스크롤 상태 ── */
+let stickyBottom = true;
+let _toastEl     = null;
+
+function isAtBottom() {
+  return $msgs.scrollHeight - $msgs.scrollTop - $msgs.clientHeight < 60;
+}
+
+/* 새 메시지 미리보기 토스트 */
+function showNewMsgToast(sender, text) {
+  if (!_toastEl) {
+    _toastEl = document.createElement('div');
+    _toastEl.className = 'new-msg-toast';
+    _toastEl.addEventListener('click', () => scrollBottom());
+
+    const sEl = document.createElement('span');
+    sEl.className = 'nmt-sender';
+    const tEl = document.createElement('span');
+    tEl.className = 'nmt-text';
+    const aEl = document.createElement('span');
+    aEl.className = 'nmt-arrow';
+    aEl.textContent = '↓';
+    _toastEl.append(sEl, tEl, aEl);
+
+    $msgs.parentElement.appendChild(_toastEl);
+  }
+  const preview = (text || '').replace(/\n/g, ' ').trim().slice(0, 38);
+  _toastEl.querySelector('.nmt-sender').textContent = sender;
+  _toastEl.querySelector('.nmt-text').textContent   = preview + (preview.length >= 38 ? '…' : '');
+  _toastEl.classList.add('show');
+}
+
+function hideNewMsgToast() {
+  _toastEl?.classList.remove('show');
+}
+
+/* 내부용: 하단 고정이면 스크롤, 아니면 미리보기 */
+function scrollOrPreview(sender, text) {
+  if (stickyBottom) {
+    requestAnimationFrame(() => { $msgs.scrollTop = $msgs.scrollHeight; });
+  } else {
+    hideNewMsgToast();
+    requestAnimationFrame(() => showNewMsgToast(sender, text));
+  }
+}
+
+/* 강제 스크롤 (페이지 로드 / 미리보기 클릭 / 사용자 메시지 전송) */
 export function scrollBottom() {
+  stickyBottom = true;
+  hideNewMsgToast();
   requestAnimationFrame(() => { $msgs.scrollTop = $msgs.scrollHeight; });
+}
+
+/* 스크롤 이벤트 초기화 */
+export function initScrollBehavior() {
+  if (!$msgs) return;
+  $msgs.addEventListener('scroll', () => {
+    if (isAtBottom()) {
+      stickyBottom = true;
+      hideNewMsgToast();
+    } else {
+      stickyBottom = false;
+    }
+  }, { passive: true });
 }
 
 /* ================================================================
@@ -374,6 +435,8 @@ export function addMsg(role, text, { mid = null, replyTo = null } = {}) {
     $msgs.appendChild(group);
     addContextMenu(group, clean);
     if (!hasSpecial) appendLinkPreviews(bubblesCol, clean);
+    scrollOrPreview('루마네', clean);
+    return;
 
   } else {
     /* 내 메시지 */
@@ -447,7 +510,7 @@ async function appendLinkPreviews(container, text) {
         (d.description ? `<div class="lp-desc">${esc(d.description)}</div>`  : '') +
         `</div>`;
       container.appendChild(card);
-      scrollBottom();
+      if (stickyBottom) requestAnimationFrame(() => { $msgs.scrollTop = $msgs.scrollHeight; });
     } catch { /* 무시 */ }
   }
 }
@@ -504,7 +567,7 @@ export function addImageMsg(imgUrl, label) {
   group.appendChild(body);
 
   $msgs.appendChild(group);
-  scrollBottom();
+  scrollOrPreview('루마네', label || '이미지 예시');
 }
 
 /* ── 타이핑 인디케이터 ── */
@@ -522,7 +585,7 @@ export function showTyping() {
       `</div>` +
     `</div>`;
   $msgs.appendChild(el);
-  scrollBottom();
+  scrollOrPreview('루마네', '입력 중…');
 }
 
 export function hideTyping() {
@@ -544,7 +607,7 @@ export function showAdminTyping() {
       `</div>` +
     `</div>`;
   $msgs.appendChild(el);
-  scrollBottom();
+  scrollOrPreview('담당자', '입력 중…');
 }
 
 export function hideAdminTyping() {

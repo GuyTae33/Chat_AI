@@ -17,6 +17,7 @@
 
 html, body {
   height: 100%;
+  overflow: hidden;
   font-family: 'Noto Sans KR', sans-serif;
   background: var(--chat-bg);
 }
@@ -60,21 +61,21 @@ html, body {
   .page {
     flex-direction: row;
     align-items: stretch;
-    min-height: 100vh;
+    height: 100vh;
     padding: 0;
     max-width: 1280px;
     margin: 0 auto;
     box-shadow: 0 0 80px rgba(0,0,0,.10);
+    overflow: hidden;
   }
   .embed-mode .page { box-shadow: none; }
 
   .shell {
     flex: 1;
     max-width: none;
-    min-height: 100vh;
-    height: auto;
+    height: 100%;
     border-radius: 0;
-    overflow: visible;
+    overflow: hidden;
     box-shadow: none;
   }
 
@@ -138,7 +139,6 @@ html, body {
 /* ── 모바일: 뷰포트 고정 + 카톡처럼 심플한 헤더 ─── */
 @media (max-width: 767px) {
   /* shell을 뷰포트 높이에 완전 고정 → 입력창 항상 하단 고정 */
-  html, body { height: 100%; overflow: hidden; }
   .page { height: 100%; min-height: unset; }
   .shell {
     height: 100vh;
@@ -283,6 +283,53 @@ html, body {
 .banner.warn  { display: block; background: #fef3c7; color: #92400e; }
 .banner.ok    { display: block; background: #d1fae5; color: #065f46; }
 .banner.admin { display: block; background: #faf3e0; color: #8a6a30; font-weight: 600; }
+
+/* ── 새 메시지 미리보기 토스트 (카톡 스타일) ──── */
+.new-msg-toast {
+  position: absolute;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 24px;
+  padding: 8px 16px 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.14);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  z-index: 200;
+  max-width: calc(100% - 48px);
+}
+.new-msg-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.nmt-sender {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--purple);
+  flex-shrink: 0;
+}
+.nmt-text {
+  font-size: 13px;
+  color: var(--gray-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.nmt-arrow {
+  font-size: 13px;
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
 
 /* ── 메시지 목록 ────────────────────────────────── */
 .messages {

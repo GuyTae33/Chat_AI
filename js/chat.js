@@ -28,6 +28,7 @@ import {
   initInputListeners, initDateSep, appendDateSep,
   clearMessages, clearInput,
   showAdminTyping, hideAdminTyping,
+  scrollBottom, initScrollBehavior,
 } from './ui.js';
 import { getPendingReply, setPendingReply, clearPendingReply } from './reply.js';
 import { getEditingMid, startEdit, cancelEdit, applyEditToDom, deleteFromDom } from './message-actions.js';
@@ -553,6 +554,7 @@ export function newChat() {
   }
 
   clearMessages();
+  scrollBottom();
   setQuick([]);
 
   document.getElementById('confirmView').classList.remove('show');
@@ -570,6 +572,7 @@ export function newChat() {
 ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   initUI();
+  initScrollBehavior();
   initDateSep(todayStr());
   initInputListeners(send);
 
@@ -717,6 +720,8 @@ async function startChat() {
         if (serverOnline) { registerSession(); startPolling(); }
         return;
       }
+      /* 복원 완료 후 맨 아래로 스크롤 */
+      setTimeout(() => scrollBottom(), 80);
       /* 서버 세션에도 재동기화 */
       if (serverOnline) {
         registerSession();
