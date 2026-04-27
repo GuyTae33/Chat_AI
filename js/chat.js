@@ -578,6 +578,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initDateSep(todayStr());
   initInputListeners(send);
 
+  /* 테스트 모드 표시 */
+  if (IS_TEST) {
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#f59e0b;color:#1c1917;text-align:center;font-size:12px;font-weight:700;padding:4px 8px;letter-spacing:.05em;pointer-events:none;';
+    bar.textContent = '⚠️ 테스트 모드 — 이 대화는 저장되지 않습니다';
+    document.body.prepend(bar);
+    document.title = '[테스트] ' + document.title;
+  }
+
   /* contenteditable 붙여넣기 — 순수 텍스트만 허용 */
   document.querySelectorAll('#quoteBox [contenteditable]').forEach(el => {
     el.addEventListener('paste', e => {
