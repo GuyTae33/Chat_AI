@@ -81,6 +81,13 @@ html, body {
     box-shadow: none;
   }
 
+  /* embed 모드: shell을 iframe 높이에 고정해서 입력창 항상 표시 */
+  .embed-mode .shell {
+    height: 100vh;
+    min-height: unset;
+    overflow: hidden;
+  }
+
   /* 헤더 버튼들 → 사이드패널로 이동 */
   .h-history-btn, .h-collect-btn, .h-save-btn { display: none; }
 
