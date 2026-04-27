@@ -1,6 +1,7 @@
 /* ================================================================
    메시지 액션 — 삭제 / 수정 상태 관리
 ================================================================ */
+import { esc } from './utils.js';
 
 let editingMid = null; // 수정 중인 메시지 ID
 
@@ -18,7 +19,7 @@ export function startEdit(mid, text, onFill) {
       <div class="eb-line"></div>
       <div class="eb-content">
         <div class="eb-label">✏️ 메시지 수정 중</div>
-        <div class="eb-preview">${escAct(preview)}</div>
+        <div class="eb-preview">${esc(preview)}</div>
       </div>
       <button class="eb-close" id="editBarClose">✕</button>
     `;
@@ -46,7 +47,7 @@ export function applyEditToDom(mid, newText) {
   if (!group) return;
   const bubble = group.querySelector('.bubble.user');
   if (bubble) {
-    bubble.innerHTML = escAct(newText);
+    bubble.innerHTML = esc(newText);
     /* 수정됨 표시 */
     const edited = group.querySelector('.msg-edited');
     if (!edited) {
@@ -69,12 +70,4 @@ export function deleteFromDom(mid) {
     group.style.opacity = '0';
     setTimeout(() => group.remove(), 200);
   }
-}
-
-function escAct(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
 }

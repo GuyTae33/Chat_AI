@@ -493,13 +493,22 @@ async function appendLinkPreviews(container, text) {
       card.href = url;
       card.target = '_blank';
       card.rel = 'noopener noreferrer';
-      card.innerHTML =
-        (d.image ? `<img class="lp-img" src="${esc(d.image)}" alt="" loading="lazy" onerror="this.remove()">` : '') +
-        `<div class="lp-text">` +
+      if (d.image) {
+        const img = document.createElement('img');
+        img.className = 'lp-img';
+        img.src = d.image;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.onerror = function() { this.remove(); };
+        card.appendChild(img);
+      }
+      const textDiv = document.createElement('div');
+      textDiv.className = 'lp-text';
+      textDiv.innerHTML =
         `<div class="lp-domain">${esc(d.domain || new URL(url).hostname)}</div>` +
         (d.title       ? `<div class="lp-title">${esc(d.title)}</div>`       : '') +
-        (d.description ? `<div class="lp-desc">${esc(d.description)}</div>`  : '') +
-        `</div>`;
+        (d.description ? `<div class="lp-desc">${esc(d.description)}</div>`  : '');
+      card.appendChild(textDiv);
       container.appendChild(card);
       if (stickyBottom) requestAnimationFrame(() => { $msgs.scrollTop = $msgs.scrollHeight; });
     } catch { /* 무시 */ }
