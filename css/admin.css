@@ -853,8 +853,10 @@ body {
 
   /* 통계 카드: 2열 */
   .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
-  .stat-value { font-size: 22px; }
-  .stat-card { padding: 14px; }
+  .stats-card { padding: 12px 14px; }
+  .stats-label { font-size: 10px; white-space: nowrap; margin-bottom: 5px; }
+  .stats-value { font-size: 22px; margin-bottom: 4px; }
+  .stats-sub { font-size: 11px; }
 
   /* ── 라이브 상담 패널: 카톡 스타일 전환 ── */
   .live-split {
