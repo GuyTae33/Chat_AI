@@ -234,7 +234,9 @@ function showAdminBanner(isAdmin) {
    히스토리에서 고객 정보 추출 (데모 모드 전용)
 ================================================================ */
 function extractFromHistory() {
-  const userMsgs = history.filter(m => m.role === 'user').map(m => m.content);
+  const userMsgs = history
+    .filter(m => m.role === 'user' && !m.content?.startsWith('[이미지]') && !m.content?.startsWith('[파일:'))
+    .map(m => m.content);
   return {
     이름:         userMsgs[0] || '-',
     연락처:       userMsgs[1] || '-',
@@ -257,6 +259,9 @@ function postFieldsToParent() {
   const info = extractFromHistory();
   const size = info.공간사이즈?.raw || '';
   const nums = size.replace(/[×xX×]/g, ' ').match(/\d{3,4}/g) || [];
+  const parentOrigin = (() => {
+    try { return document.referrer ? new URL(document.referrer).origin : window.location.origin; } catch { return window.location.origin; }
+  })();
   window.parent.postMessage({
     type: 'lumane_fields',
     fields: {
@@ -272,7 +277,7 @@ function postFieldsToParent() {
       shelfColor:  info.선반색상 !== '-' ? info.선반색상 : '',
       memo:        info.요청사항 !== '-' ? info.요청사항 : '',
     }
-  }, '*');
+  }, parentOrigin);
 }
 
 /* ================================================================
