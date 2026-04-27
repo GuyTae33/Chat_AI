@@ -683,10 +683,7 @@ body > main, .site-main { padding-top: var(--header-h); }
 }
 .chat-embed-wrap {
   margin-top: 32px;
-  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 8px 40px rgba(0,0,0,.10);
-  border: 1px solid rgba(201,169,110,.2);
 }
 .chat-embed-frame {
   display: block;
