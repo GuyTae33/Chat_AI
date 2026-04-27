@@ -14,6 +14,9 @@ const SESSION_ID = (() => {
   return id;
 })();
 
+/* ── 테스트 모드: URL에 ?test=1 파라미터가 있으면 활성화 ── */
+const IS_TEST = new URLSearchParams(window.location.search).get('test') === '1';
+
 /* ── 닉네임: localStorage에 저장 ── */
 const NICKNAME_KEY = '루마네_닉네임';
 let userNickname = localStorage.getItem(NICKNAME_KEY) || '';
@@ -158,7 +161,7 @@ async function registerSessionWithHistory() {
     await fetch(`${SERVER}/api/session/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: SESSION_ID, nickname: userNickname }),
+      body: JSON.stringify({ sessionId: SESSION_ID, nickname: userNickname, isTest: IS_TEST }),
     });
     // 히스토리가 있으면 /api/chat으로 동기화 (빈 응답 OK)
     if (history.length > 0) {
@@ -179,7 +182,7 @@ async function registerSession() {
     await fetch(`${SERVER}/api/session/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId: SESSION_ID, nickname: userNickname }),
+      body: JSON.stringify({ sessionId: SESSION_ID, nickname: userNickname, isTest: IS_TEST }),
     });
   } catch { /* 무시 */ }
 }
@@ -417,7 +420,7 @@ async function send() {
       const res = await fetch(`${SERVER}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: historyForAPI(), sessionId: SESSION_ID }),
+        body: JSON.stringify({ messages: historyForAPI(), sessionId: SESSION_ID, isTest: IS_TEST }),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
@@ -508,7 +511,7 @@ function greet() {
     fetch(`${SERVER}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [], sessionId: SESSION_ID }),
+      body: JSON.stringify({ messages: [], sessionId: SESSION_ID, isTest: IS_TEST }),
     })
     .then(r => { if (!r.ok) throw new Error('greet failed'); return r.json(); })
     .then(data => {

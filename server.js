@@ -157,6 +157,7 @@ function getOrCreateSession(sessionId) {
       messages: [],
       pendingAdminMsgs: [],
       customerName: null,
+      isTest: false,
       startedAt: new Date(),
       lastActivity: new Date(),
       lastMessageAt: new Date(),
@@ -237,6 +238,7 @@ function parseOrderSheet(text) {
 
 // ── AI 견적 자동 등록 (주문서 출력 시 견적접수 테이블에 저장) ──
 async function autoRegisterQuote(sess, reply) {
+  if (sess.isTest) return; // 테스트 세션은 견적 자동 등록 제외
   if (!reply.includes('총 합계')) return;
   const parsed = parseOrderSheet(reply);
   if (!parsed.estimated_price) return;
@@ -275,6 +277,7 @@ async function autoRegisterQuote(sess, reply) {
 // ── 실시간 Supabase upsert (Notion 없음) ─────────────────────
 async function upsertConversation(sess) {
   if (!sess || !sess.messages || sess.messages.length === 0) return;
+  if (sess.isTest) return; // 테스트 세션은 DB 저장 제외
   // 고객 메시지가 하나도 없으면 저장하지 않음 (인사만 보고 나간 경우)
   const userMsgCount = sess.messages.filter(m => m.role === 'user').length;
   if (userMsgCount === 0) return;
@@ -701,7 +704,7 @@ async function buildApiMessages(messages) {
 
 // ── 채팅 API ──────────────────────────────────────────────────
 app.post('/api/chat', chatRateLimit, async (req, res) => {
-  const { messages, sessionId, syncOnly } = req.body;
+  const { messages, sessionId, syncOnly, isTest } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'messages 배열이 필요합니다.' });
@@ -728,6 +731,7 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
     sess.messages = messages;
     sess.lastActivity = new Date();
     if (!syncOnly) sess.lastMessageAt = new Date();
+    if (isTest === true) sess.isTest = true;
 
     // 고객 이름 자동 추출 (첫 번째 user 메시지)
     const firstUser = messages.find(m => m.role === 'user');
@@ -834,15 +838,15 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
 
 // ── 세션 등록 API ─────────────────────────────────────────────
 app.post('/api/session/register', (req, res) => {
-  const { sessionId, nickname } = req.body;
+  const { sessionId, nickname, isTest } = req.body;
   if (!sessionId || !SESSION_ID_RE.test(sessionId)) {
     return res.status(400).json({ error: '유효하지 않은 sessionId' });
   }
   const sess = getOrCreateSession(sessionId);
-  // 닉네임이 전달되면 customerName으로 설정 (기존 이름보다 우선)
   if (nickname && typeof nickname === 'string') {
     sess.customerName = nickname.trim().slice(0, 20);
   }
+  if (isTest === true) sess.isTest = true;
   res.json({ ok: true });
 });
 
@@ -877,6 +881,7 @@ app.get('/api/admin/sessions', async (_req, res) => {
       startedAt: sess.startedAt,
       lastActivity: sess.lastActivity,
       lastMessageAt: sess.lastMessageAt || sess.startedAt,
+      isTest: sess.isTest || false,
     });
     sessionIds.push(id);
   }

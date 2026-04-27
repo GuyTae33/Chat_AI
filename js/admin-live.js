@@ -141,8 +141,9 @@ function renderLiveSessionList(sessions) {
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:18px;">${isAdmin ? '👩‍💼' : '🤖'}</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;">
               ${escAdmin(s.customerName)}
+              ${s.isTest ? '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:700;">테스트</span>' : ''}
             </div>
             <div style="font-size:11px;color:#9ca3af;font-family:monospace">${escAdmin(s.id.slice(0,18))}…</div>
           </div>
