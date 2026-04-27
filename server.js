@@ -773,7 +773,7 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
 
   // 첫 인사 — API 호출 없이 고정 문구 반환 (토큰 절약)
   if (messages.length === 0) {
-    const greeting = '안녕하세요~ 케이트블랑 드레스룸 상담 담당 루마네예요 :)\n\n어떤 공간에 설치 생각 중이세요? 형태(일자/ㄱ자/ㄷ자)나 대략적인 치수 알려주시면 바로 안내드릴게요!';
+    const greeting = '안녕하세요~ 케이트블랑 드레스룸 상담 담당 루마네예요 :)\n\n무엇을 도와드릴까요?';
     if (sessionId && sessions.has(sessionId)) {
       const sess = sessions.get(sessionId);
       sess.messages.push({ role: 'assistant', content: greeting, ts: new Date().toISOString() });
