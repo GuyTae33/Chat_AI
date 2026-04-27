@@ -30,6 +30,10 @@ html, body {
   box-shadow: 0 0 48px rgba(124,58,237,.12);
   display: flex; flex-direction: column;
 }
+.embed-mode .shell,
+.embed-mode .page {
+  box-shadow: none;
+}
 
 /* ── PC 사이드 패널 기본 (모바일 hidden) ───────── */
 .pc-panel { display: none; }
