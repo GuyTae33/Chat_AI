@@ -693,8 +693,27 @@ body > main, .site-main { padding-top: var(--header-h); }
   background: #fff;
 }
 
-@media (max-width: 540px) {
-  .chat-embed-frame { height: 700px; }
+@media (max-width: 767px) {
+  .chat-embed-section {
+    padding: 0;
+    background: #f4f1ec;
+  }
+  .chat-embed-section .container {
+    max-width: 100% !important;
+    padding: 0;
+  }
+  .chat-embed-section .section-badge,
+  .chat-embed-section .section-title,
+  .chat-embed-section .section-sub {
+    display: none;
+  }
+  .chat-embed-wrap {
+    margin-top: 0;
+  }
+  .chat-embed-frame {
+    height: 100svh;
+    height: 100vh;
+  }
 }
 
 /* ── 인라인 견적 폼 섹션 ──────────────────────── */
