@@ -738,15 +738,18 @@ body > main, .site-main { padding-top: var(--header-h); }
 
   .chat-embed-section.chat-locked {
     position: fixed !important;
-    top: 0 !important;
+    top: 50% !important;
     left: 0 !important;
     width: 100vw !important;
-    height: 100svh !important;
-    z-index: 9000;
-    transform: none !important;
+    height: 82svh !important;
+    z-index: 9000 !important;
+    transform: translateY(-50%) !important;
     display: flex !important;
     flex-direction: column !important;
     padding: 0 !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    box-shadow: 0 -4px 32px rgba(0,0,0,.18) !important;
+    overflow: hidden !important;
   }
 
   .chat-embed-section.chat-locked .chat-embed-wrap {

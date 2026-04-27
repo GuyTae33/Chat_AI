@@ -634,10 +634,19 @@ document.addEventListener('DOMContentLoaded', () => {
     try { return document.referrer ? new URL(document.referrer).origin : window.location.origin; }
     catch { return window.location.origin; }
   })();
-  document.getElementById('inp').addEventListener('focus', () => {
-    if (window.parent === window) return;
+  let _notified = false;
+  const _notifyParent = () => {
+    if (_notified || window.parent === window) return;
+    _notified = true;
     window.parent.postMessage({ type: 'lumane_focus' }, _focusOrigin);
-  }, { once: true });
+  };
+  document.addEventListener('touchstart', _notifyParent, { passive: true });
+  document.getElementById('inp').addEventListener('focus', _notifyParent);
+  // 부모가 잠금 해제 시 리셋 신호를 받아 재활성화
+  window.addEventListener('message', (e) => {
+    if (e.origin !== _focusOrigin) return;
+    if (e.data && e.data.type === 'lumane_unlock') _notified = false;
+  });
 
   /* ── 고객 타이핑 신호 (어드민에게 전달) ── */
   let _customerTypingTimer = null;

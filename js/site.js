@@ -76,10 +76,16 @@ window.unlockChat = function () {
   const section = document.querySelector('.chat-embed-section');
   if (section) section.classList.remove('chat-locked');
   window.scrollTo({ top: _savedScrollY, behavior: 'instant' });
+  // iframe에 unlock 신호 전달 → chat.js 리스너 재활성화
+  const frame = document.querySelector('.chat-embed-frame');
+  if (frame && frame.contentWindow) {
+    frame.contentWindow.postMessage({ type: 'lumane_unlock' }, window.location.origin);
+  }
 };
 
 // postMessage from iframe (chat input focused)
 window.addEventListener('message', (e) => {
+  if (e.origin !== window.location.origin) return;
   if (e.data && e.data.type === 'lumane_focus') lockChat();
 });
 
