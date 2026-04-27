@@ -44,7 +44,7 @@
       <nav class="main-nav">
         <a href="/"  class="nav-link"             data-page="/">홈</a>
         <a href="/blog"   class="nav-link"             data-page="/blog">블로그</a>
-        <a href="/chat"   class="nav-link nav-chat-link active" data-page="/chat">💬 AI 상담</a>
+        <a href="/chat"   class="nav-link nav-chat-link active" data-page="/chat">💬 견적상담</a>
         <a href="/quote"  class="nav-link"             data-page="/quote">견적요청</a>
       </nav>
       <div class="header-social">
@@ -59,7 +59,7 @@
     <div class="mobile-menu" id="mobile-menu">
       <a href="/" onclick="closeMobileMenu()">홈</a>
       <a href="/blog"  onclick="closeMobileMenu()">블로그</a>
-      <a href="/chat"  onclick="closeMobileMenu()">💬 AI 상담</a>
+      <a href="/chat"  onclick="closeMobileMenu()">💬 견적상담</a>
       <a href="/quote" onclick="closeMobileMenu()">견적요청</a>
       <div class="mobile-menu-social">
         <a href="http://pf.kakao.com/_qbxjwxb/" target="_blank" rel="noopener" class="mobile-social-link kakao"><i class="fas fa-comment-dots"></i> 카카오톡 채널</a>
@@ -98,10 +98,9 @@
     <!-- 채팅 헤더 -->
     <header class="header">
       <a class="h-back" href="/">←</a>
-      <div class="h-av" style="background:linear-gradient(135deg,#c9a96e,#a8883f);font-size:16px;font-weight:700;color:#fff;letter-spacing:-.5px;">AI</div>
       <div class="h-info">
         <div class="h-name">루마네 상담원</div>
-        <div class="h-sub">케이트블랑 드레스룸 · AI 상담</div>
+        <div class="h-sub">케이트블랑 드레스룸 · 견적상담</div>
       </div>
       <div class="h-status">
         <div class="dot-live"></div>
@@ -348,5 +347,12 @@
   <input type="file" id="fileInput" accept="image/*,video/*,audio/*,application/pdf" style="display:none">
   <script type="module" src="js/chat.js"></script>
   <script src="js/site.js"></script>
+  <script>
+    if (new URLSearchParams(location.search).get('embed') === '1') {
+      document.getElementById('site-header')?.remove();
+      document.querySelector('.h-back')?.remove();
+      document.querySelector('.pc-panel')?.remove();
+    }
+  </script>
 </body>
 </html>
