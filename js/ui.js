@@ -675,6 +675,13 @@ export function setQuick(labels, isChoice = false) {
 
 /* ── AI 응답에서 퀵 버튼 자동 감지 ── */
 export function updateQuickFromText(text) {
+  /* ①②③ 스타일 선택지 자동 감지 */
+  const circled = '①②③④⑤⑥⑦⑧⑨⑩';
+  const choiceLines = text.split('\n').filter(l => circled.includes(l.trim()[0]));
+  if (choiceLines.length >= 2) {
+    setQuick(choiceLines.map(l => l.trim()), true); return;
+  }
+
   if (/(드레스룸\s*형태|형태.*어떻게|1자형|ㄱ자형|ㄷ자형|11자형)/.test(text)) {
     setQuick(['1자형', 'ㄱ자형', 'ㄷ자형', '11자형'], true); return;
   }
