@@ -59,14 +59,16 @@ let _statRequestId = 0;
 
 async function openStatDetail(period, label) {
   const myId = ++_statRequestId;
-  const overlay = document.getElementById('statDetailOverlay');
-  const body    = document.getElementById('statDetailBody');
+  const body  = document.getElementById('statDetailBody');
   _statLabel = label;
+  _monthSessionsCache = null;
+  _monthNavLevel = 0;
   document.getElementById('statDetailTitle').textContent = label;
   document.getElementById('statDetailCount').textContent = '불러오는 중...';
-  document.getElementById('statDetailBack').style.display = 'none';
+  document.getElementById('statDetailBack').textContent = '‹ 뒤로';
+  document.getElementById('statDetailBack').onclick = () => switchTab('dashboard');
   body.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">로딩 중...</div>';
-  overlay.style.display = 'block';
+  switchTab('stat-detail');
 
   try {
     const res = await fetch(`${SERVER}/api/admin/stat-sessions?period=${encodeURIComponent(period)}`, { headers: adminHeaders() });
@@ -120,7 +122,16 @@ function showStatDay(date) {
 
   document.getElementById('statDetailTitle').textContent = `${mmdd}(${dow}) 상담`;
   document.getElementById('statDetailCount').textContent = `${list.length}건`;
-  document.getElementById('statDetailBack').style.display = 'inline-block';
+  const backBtn = document.getElementById('statDetailBack');
+  backBtn.textContent = `‹ ${_statLabel}`;
+  backBtn.onclick = () => {
+    document.getElementById('statDetailTitle').textContent = _statLabel;
+    document.getElementById('statDetailCount').textContent = `총 ${_statSessions.length}건`;
+    backBtn.textContent = '‹ 뒤로';
+    backBtn.onclick = () => switchTab('dashboard');
+    document.getElementById('statDetailBody').scrollTop = 0;
+    document.getElementById('statDetailBody').innerHTML = renderStatDaySummary(_statSessions);
+  };
 
   const body = document.getElementById('statDetailBody');
   if (list.length === 0) {
@@ -146,18 +157,7 @@ function statDetailGoBack() {
     renderWeeklyBreakdown(_monthSessionsCache);
     return;
   }
-  if (_monthSessionsCache !== null) return; // 예상 외 상태 방어
-  document.getElementById('statDetailTitle').textContent = _statLabel;
-  document.getElementById('statDetailCount').textContent = `총 ${_statSessions.length}건`;
-  document.getElementById('statDetailBack').style.display = 'none';
-  document.getElementById('statDetailBody').innerHTML = renderStatDaySummary(_statSessions);
-}
-
-function closeStatDetail() {
-  document.getElementById('statDetailOverlay').style.display = 'none';
-  document.getElementById('statDetailBack').style.display = 'none';
-  _monthSessionsCache = null;
-  _monthNavLevel = 0;
+  switchTab('dashboard');
 }
 
 /* ── 이번 달 3단계 드릴다운 ── */
@@ -165,24 +165,29 @@ let _monthSessionsCache = null;
 let _monthNavLevel = 0;
 
 async function openMonthDetail() {
-  const overlay = document.getElementById('statDetailOverlay');
-  const body    = document.getElementById('statDetailBody');
+  const myId = ++_statRequestId;
+  const body  = document.getElementById('statDetailBody');
 
   _monthSessionsCache = null;
   _monthNavLevel = 1;
   document.getElementById('statDetailTitle').textContent = '이번 달 상담';
   document.getElementById('statDetailCount').textContent = '불러오는 중...';
-  document.getElementById('statDetailBack').style.display = 'none';
+  const backBtn = document.getElementById('statDetailBack');
+  backBtn.textContent = '‹ 뒤로';
+  backBtn.onclick = () => switchTab('dashboard');
   body.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">로딩 중...</div>';
-  overlay.style.display = 'block';
+  switchTab('stat-detail');
 
   try {
     const res = await fetch(`${SERVER}/api/admin/stat-sessions?period=month`, { headers: adminHeaders() });
+    if (myId !== _statRequestId) return;
     if (!res.ok) throw new Error(`서버 오류 ${res.status}`);
     const data = await res.json();
+    if (myId !== _statRequestId) return;
     _monthSessionsCache = data.sessions || [];
     renderWeeklyBreakdown(_monthSessionsCache);
   } catch {
+    if (myId !== _statRequestId) return;
     body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;">불러오기 실패</div>';
     document.getElementById('statDetailCount').textContent = '';
   }
@@ -199,7 +204,9 @@ function getWeekOfMonth(kstDateStr) {
 
 function renderWeeklyBreakdown(sessions) {
   _monthNavLevel = 1;
-  document.getElementById('statDetailBack').style.display = 'none';
+  const backBtn = document.getElementById('statDetailBack');
+  backBtn.textContent = '‹ 뒤로';
+  backBtn.onclick = () => switchTab('dashboard');
   document.getElementById('statDetailTitle').textContent = '이번 달 상담';
   document.getElementById('statDetailCount').textContent = `총 ${sessions.length}건`;
 
@@ -254,7 +261,9 @@ function openWeekDetail(weekLabel) {
     return getWeekOfMonth(kd) === weekLabel;
   });
 
-  document.getElementById('statDetailBack').style.display = 'inline-block';
+  const backBtn = document.getElementById('statDetailBack');
+  backBtn.textContent = '‹ 이번 달';
+  backBtn.onclick = () => renderWeeklyBreakdown(_monthSessionsCache);
   document.getElementById('statDetailTitle').textContent  = `이번 달 · ${weekLabel}`;
   document.getElementById('statDetailCount').textContent  = `총 ${weekSessions.length}건`;
 
@@ -658,6 +667,8 @@ function switchTab(tab) {
   } else if (tab === 'tokens') {
     document.getElementById('topbarTitle').textContent = '🪙 토큰 사용량';
     loadTokenStats();
+  } else if (tab === 'stat-detail') {
+    document.getElementById('topbarTitle').textContent = '📊 상담 현황';
   } else if (tab === 'history') {
     document.getElementById('topbarTitle').textContent = '🗂️ 저장된 상담';
     localStorage.setItem('lastSeenHistoryAt', new Date().toISOString());
