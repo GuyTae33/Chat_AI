@@ -40,43 +40,55 @@ async function loadStats() {
   } catch { /* 통계 로드 실패 시 무시 */ }
 }
 
+const KST = 9 * 60 * 60 * 1000;
+const toKSTDate = iso => {
+  if (!iso) return '날짜 미상';
+  const d = new Date(new Date(iso).getTime() + KST);
+  return d.toISOString().slice(0, 10);
+};
+const toKSTTime = iso => {
+  if (!iso) return '--:--';
+  const d = new Date(new Date(iso).getTime() + KST);
+  return d.toISOString().slice(11, 16);
+};
+
+let _statSessions = [];
+let _statLabel = '';
+
+let _statRequestId = 0;
+
 async function openStatDetail(period, label) {
+  const myId = ++_statRequestId;
   const overlay = document.getElementById('statDetailOverlay');
   const body    = document.getElementById('statDetailBody');
+  _statLabel = label;
   document.getElementById('statDetailTitle').textContent = label;
   document.getElementById('statDetailCount').textContent = '불러오는 중...';
+  document.getElementById('statDetailBack').style.display = 'none';
   body.innerHTML = '<div style="text-align:center;padding:40px;color:#9ca3af;">로딩 중...</div>';
   overlay.style.display = 'block';
 
   try {
-    const res  = await fetch(`${SERVER}/api/admin/stat-sessions?period=${period}`, { headers: adminHeaders() });
+    const res = await fetch(`${SERVER}/api/admin/stat-sessions?period=${encodeURIComponent(period)}`, { headers: adminHeaders() });
+    if (myId !== _statRequestId) return;
     if (!res.ok) throw new Error(`서버 오류 ${res.status}`);
     const data = await res.json();
-    const sessions = data.sessions || [];
-    document.getElementById('statDetailCount').textContent = `총 ${sessions.length}건`;
-    body.innerHTML = renderStatSessions(sessions);
+    if (myId !== _statRequestId) return;
+    _statSessions = data.sessions || [];
+    document.getElementById('statDetailCount').textContent = `총 ${_statSessions.length}건`;
+    body.innerHTML = renderStatDaySummary(_statSessions);
   } catch {
+    if (myId !== _statRequestId) return;
     body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;">불러오기 실패</div>';
   }
 }
 
-function renderStatSessions(sessions) {
+function renderStatDaySummary(sessions) {
   if (sessions.length === 0) {
     return '<div style="text-align:center;padding:60px 0;color:#9ca3af;font-size:14px;">해당 기간에 상담 내역이 없습니다</div>';
   }
 
-  const KST = 9 * 60 * 60 * 1000;
-  const toKSTDate = iso => {
-    if (!iso) return '날짜 미상';
-    const d = new Date(new Date(iso).getTime() + KST);
-    return d.toISOString().slice(0, 10);
-  };
-  const toKSTTime = iso => {
-    if (!iso) return '--:--';
-    const d = new Date(new Date(iso).getTime() + KST);
-    return d.toISOString().slice(11, 16);
-  };
-
+  const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
   const groups = {};
   sessions.forEach(s => {
     const date = toKSTDate(s.started_at);
@@ -84,26 +96,65 @@ function renderStatSessions(sessions) {
     groups[date].push(s);
   });
 
-  return Object.entries(groups).map(([date, list]) => `
-    <div style="display:flex;align-items:center;gap:8px;margin:20px 0 10px;">
-      <div style="flex:1;height:1px;background:#e5e7eb;"></div>
-      <div style="font-size:12px;font-weight:600;color:#6b7280;white-space:nowrap;">${date}</div>
-      <div style="flex:1;height:1px;background:#e5e7eb;"></div>
-    </div>
-    ${list.map(s => `
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:#f9fafb;margin-bottom:6px;border:1px solid #f3f4f6;">
-        <div style="font-size:12px;color:#9ca3af;width:36px;flex-shrink:0;">${toKSTTime(s.started_at)}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;color:#111827;">${escAdmin(s.customer_name || '(이름 미수집)')}</div>
-          <div style="font-size:12px;color:#6b7280;margin-top:1px;">${escAdmin(s.phone || '연락처 없음')}${s.region ? ' · ' + escAdmin(s.region) : ''}${s.layout ? ' · ' + escAdmin(s.layout) : ''}</div>
+  return Object.entries(groups).map(([date, list]) => {
+    const dow = DAY_KO[new Date(date + 'T00:00:00+09:00').getDay()];
+    const mmdd = date.slice(5).replace('-', '/');
+    return `
+      <div onclick="showStatDay('${escAttr(date)}')"
+        style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:12px;background:#f9fafb;margin-bottom:8px;border:1px solid #f3f4f6;cursor:pointer;transition:background .15s;"
+        onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#f9fafb'">
+        <div style="font-size:14px;font-weight:600;color:#111827;">${mmdd}(${dow})</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;font-weight:700;color:#7c3aed;">${list.length}건</span>
+          <span style="font-size:16px;color:#9ca3af;">›</span>
         </div>
+      </div>`;
+  }).join('');
+}
+
+function showStatDay(date) {
+  const list = _statSessions.filter(s => toKSTDate(s.started_at) === date);
+  const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+  const dow = DAY_KO[new Date(date + 'T00:00:00+09:00').getDay()];
+  const mmdd = date.slice(5).replace('-', '/');
+
+  document.getElementById('statDetailTitle').textContent = `${mmdd}(${dow}) 상담`;
+  document.getElementById('statDetailCount').textContent = `${list.length}건`;
+  document.getElementById('statDetailBack').style.display = 'inline-block';
+
+  const body = document.getElementById('statDetailBody');
+  if (list.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:60px 0;color:#9ca3af;font-size:14px;">상담 내역이 없습니다</div>';
+    return;
+  }
+  body.innerHTML = list.map(s => `
+    <div onclick="openHistoryDetail('${escAttr(String(s.id))}')"
+      style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:#f9fafb;margin-bottom:8px;border:1px solid #f3f4f6;cursor:pointer;transition:background .15s;"
+      onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='#f9fafb'">
+      <div style="font-size:12px;color:#9ca3af;width:36px;flex-shrink:0;">${toKSTTime(s.started_at)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;color:#111827;">${escAdmin(s.customer_name || '(이름 미수집)')}</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px;">${escAdmin(s.phone || '연락처 없음')}${s.region ? ' · ' + escAdmin(s.region) : ''}${s.layout ? ' · ' + escAdmin(s.layout) : ''}</div>
       </div>
-    `).join('')}
+      <span style="font-size:16px;color:#9ca3af;flex-shrink:0;">›</span>
+    </div>
   `).join('');
+}
+
+function statDetailGoBack() {
+  if (_monthSessionsCache !== null && _monthNavLevel === 2) {
+    renderWeeklyBreakdown(_monthSessionsCache);
+    return;
+  }
+  document.getElementById('statDetailTitle').textContent = _statLabel;
+  document.getElementById('statDetailCount').textContent = `총 ${_statSessions.length}건`;
+  document.getElementById('statDetailBack').style.display = 'none';
+  document.getElementById('statDetailBody').innerHTML = renderStatDaySummary(_statSessions);
 }
 
 function closeStatDetail() {
   document.getElementById('statDetailOverlay').style.display = 'none';
+  document.getElementById('statDetailBack').style.display = 'none';
 }
 
 async function loadQuotes() {
@@ -113,12 +164,28 @@ async function loadQuotes() {
     const data = await res.json();
     allQuotes = data.quotes || [];
 
+    // 새 견적 토스트 알림
     if (allQuotes.length > lastQuoteCount && lastQuoteCount > 0) {
       const diff = allQuotes.length - lastQuoteCount;
       showToast(`📬 새 견적 ${diff}건이 접수되었습니다!`, 'success');
-      document.getElementById('newBadge').style.display = 'inline';
     }
     lastQuoteCount = allQuotes.length;
+
+    // 미확인 견적 배지 — 견적 탭이 열려 있으면 자동 확인
+    const onQuotesTab = document.querySelector('.tab-btn.active')?.id === 'tab-quotes';
+    let lastSeenQuotesAt = localStorage.getItem('lastSeenQuotesAt');
+    if (!lastSeenQuotesAt) {
+      lastSeenQuotesAt = new Date().toISOString();
+      localStorage.setItem('lastSeenQuotesAt', lastSeenQuotesAt);
+    }
+    if (onQuotesTab) {
+      localStorage.setItem('lastSeenQuotesAt', new Date().toISOString());
+      updateQuoteBadge(0);
+    } else {
+      const unread = allQuotes.filter(q => q.접수시간 && q.접수시간 > lastSeenQuotesAt).length;
+      updateQuoteBadge(unread);
+    }
+
     updateUI();
   } catch (e) {
     console.error('견적 로드 실패:', e);
@@ -360,6 +427,36 @@ function updateManagerFilter() {
 
 
 /* ================================================================
+   미확인 상담 배지 업데이트
+================================================================ */
+
+function updateQuoteBadge(count) {
+  const sideEl = document.getElementById('newBadge');
+  const tabEl  = document.getElementById('quoteTabBadge');
+  if (count > 0) {
+    const label = count > 99 ? '99+' : String(count);
+    if (sideEl) { sideEl.textContent = label; sideEl.style.display = 'inline'; }
+    if (tabEl)  { tabEl.textContent  = label; tabEl.style.display  = 'inline'; }
+  } else {
+    if (sideEl) sideEl.style.display = 'none';
+    if (tabEl)  tabEl.style.display  = 'none';
+  }
+}
+
+function updateHistoryBadge(count) {
+  const sideEl = document.getElementById('historyBadge');
+  const tabEl  = document.getElementById('historyTabBadge');
+  if (count > 0) {
+    const label = count > 99 ? '99+' : String(count);
+    if (sideEl) { sideEl.textContent = label; sideEl.style.display = 'inline'; }
+    if (tabEl)  { tabEl.textContent  = label; tabEl.style.display  = 'inline'; }
+  } else {
+    if (sideEl) sideEl.style.display = 'none';
+    if (tabEl)  tabEl.style.display  = 'none';
+  }
+}
+
+/* ================================================================
    필터링 & 검색
 ================================================================ */
 
@@ -410,7 +507,8 @@ function switchTab(tab) {
   } else if (tab === 'quotes') {
     navItems[1].classList.add('active');
     document.getElementById('topbarTitle').textContent = '📋 견적 목록';
-    document.getElementById('newBadge').style.display = 'none';
+    localStorage.setItem('lastSeenQuotesAt', new Date().toISOString());
+    updateQuoteBadge(0);
   } else if (tab === 'live') {
     navItems[2].classList.add('active');
     document.getElementById('topbarTitle').textContent = '📡 라이브 상담';
@@ -421,6 +519,8 @@ function switchTab(tab) {
     loadTokenStats();
   } else if (tab === 'history') {
     document.getElementById('topbarTitle').textContent = '🗂️ 저장된 상담';
+    localStorage.setItem('lastSeenHistoryAt', new Date().toISOString());
+    updateHistoryBadge(0);
     loadHistory();
   }
 }
@@ -536,7 +636,7 @@ async function loadHistory() {
     }
     const data = await res.json();
     _historyAll = data.conversations || [];
-    renderHistoryList(_historyAll);
+    filterHistory();
   } catch (err) {
     errEl.textContent = `불러오기 실패: ${err.message}`;
     errEl.style.display = 'block';
@@ -547,8 +647,16 @@ async function loadHistory() {
 function filterHistory() {
   const kw     = (document.getElementById('historySearch')?.value || '').trim().toLowerCase();
   const reason = document.getElementById('historyReasonFilter')?.value || '';
+  const date   = document.getElementById('historyDateFilter')?.value || '';
   const result = _historyAll.filter(c => {
     if (reason && c.save_reason !== reason) return false;
+    if (date) {
+      const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const savedKST = c.saved_at
+        ? new Date(new Date(c.saved_at).getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        : null;
+      if (savedKST !== date) return false;
+    }
     if (!kw) return true;
     return [c.customer_name, c.phone, c.region, c.layout].some(v => (v || '').toLowerCase().includes(kw));
   });
