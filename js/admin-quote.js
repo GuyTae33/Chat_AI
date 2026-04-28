@@ -104,6 +104,7 @@ function exportExcel() {
     '요청사항':    q.고객정보?.요청사항 || '',
     '개인정보동의': q.고객정보?.개인정보동의 || '',
     '메모':        q.메모 || '',
+    '접수경로':    q.출처 || '직접입력',
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);

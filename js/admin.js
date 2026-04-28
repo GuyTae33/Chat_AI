@@ -551,7 +551,12 @@ function updateQuoteList(quotes) {
     return;
   }
 
-  container.innerHTML = [...list].reverse().map(q => `
+  container.innerHTML = [...list].reverse().map(q => {
+    const isAI = q.출처 === 'AI상담';
+    const sourceBadge = isAI
+      ? `<span style="background:#ede9fe;color:#7c3aed;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;">🤖 AI상담</span>`
+      : `<span style="background:#f0fdf4;color:#16a34a;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600;">📝 직접입력</span>`;
+    return `
     <div class="quote-card" onclick="openModal('${escAttr(String(q.id))}')">
       <div class="quote-card-header">
         <div class="quote-no">${q.접수번호}</div>
@@ -560,10 +565,12 @@ function updateQuoteList(quotes) {
         <div class="quote-region">${q.고객정보?.설치지역 || '-'}</div>
         <div class="quote-date">${formatDate(q.접수시간)}</div>
         <div class="quote-manager">${q.담당자 || '<span style="color:#d1d5db">미배정</span>'}</div>
+        ${sourceBadge}
         <span class="status-badge ${q.상태}">${q.상태}</span>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function updateManagerFilter() {
