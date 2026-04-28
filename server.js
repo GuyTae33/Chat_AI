@@ -36,21 +36,22 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
 });
 
-// ── 루마네 시스템 프롬프트 (지침/ 폴더 자동 스캔) ────────────
+// ── 루마네 시스템 프롬프트 (지침/ 폴더 요청마다 재로드 → 실시간 반영) ────────────
 const MD_DIR = path.join(__dirname, '지침');
-const mdContents = fs.readdirSync(MD_DIR)
-  .filter(f => f.endsWith('.md'))
-  .sort()
-  .map(f => fs.readFileSync(path.join(MD_DIR, f), 'utf-8'))
-  .join('\n\n---\n\n');
-
-const SYSTEM_PROMPT = `당신은 '루마네'라는 이름의 케이트블랑 시스템행거 전문 상담사입니다.
+function getSystemPrompt() {
+  const mdContents = fs.readdirSync(MD_DIR)
+    .filter(f => f.endsWith('.md'))
+    .sort()
+    .map(f => fs.readFileSync(path.join(MD_DIR, f), 'utf-8'))
+    .join('\n\n---\n\n');
+  return `당신은 '루마네'라는 이름의 케이트블랑 시스템행거 전문 상담사입니다.
 아래 지침을 반드시 따르세요.
 
 자신이 AI·챗봇·인공지능임을 절대 먼저 밝히지 않는다. 고객이 직접 물어볼 경우에만 솔직하게 답한다.
 자기소개 시 "저는 케이트블랑 드레스룸 상담을 담당하고 있는 루마네입니다" 형식으로만 소개한다.
 
 ${mdContents}`;
+}
 
 // ── 미들웨어 ──────────────────────────────────────────────────
 app.use(cors({
@@ -797,7 +798,7 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
       system: [
         {
           type: 'text',
-          text: SYSTEM_PROMPT,
+          text: getSystemPrompt(),
           cache_control: { type: 'ephemeral' },  // 시스템 프롬프트 캐싱 (5분간 유지, 재사용 시 90% 절감)
         },
       ],
