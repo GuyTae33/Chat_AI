@@ -383,8 +383,87 @@ function calcEstimate(fields) {
 }
 
 /**
- * AI가 출력한 주문서/견적서에서만 필드 추출.
- * 주문서가 없으면 모두 null → 어드민에 "미수집" 표시.
+ * 주문서 없을 때 대화 전체에서 필드 추출 (베스트에포트)
+ */
+function extractFieldsFromConversation(messages) {
+  const msgs = messages || [];
+  // 극단적으로 긴 대화 방어 — 앞 20000자만 사용
+  const allText  = msgs.map(m => String(m.content || '')).join('\n').slice(0, 20000);
+  const userText = msgs.filter(m => m.role === 'user').map(m => String(m.content || '')).join('\n').slice(0, 20000);
+  const botText  = msgs.filter(m => m.role === 'assistant').map(m => String(m.content || '')).join('\n').slice(0, 20000);
+
+  // 설치지역: 시·도 + 시·군·구 → 단독 시·군·구 순서로 추출
+  let 설치지역 = null;
+  const regionM = allText.match(
+    /(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)[^\n,]{0,10}?([가-힣]+[시군구])/
+  );
+  if (regionM) {
+    // regionM[0] 대신 캡처그룹 조합으로 불필요한 조사 제거
+    설치지역 = (regionM[1] + ' ' + regionM[2]).trim().slice(0, 50);
+  } else {
+    // 단어 경계 확인 — "보여주시면" 같은 오탐 방지, 최소 3자 이상
+    const cityM = allText.match(/(?<![가-힣])([가-힣]{3,6}[시군구])(?![가-힣])/);
+    if (cityM) 설치지역 = cityM[1];
+  }
+
+  // 형태
+  let 형태 = null;
+  const shapeM = allText.match(/(ㄷ자형|ㄱ자형|11자형|일자형|ㄴ자형|ㄷ\s*자|ㄱ\s*자|일\s*자)/);
+  if (shapeM) 형태 = shapeM[1].replace(/\s/g, '');
+
+  // 공간사이즈: 가로/세로/높이 mm 패턴 우선, 없으면 3~4자리 숫자 3개
+  let 공간사이즈 = null;
+  const sizeM1 = allText.match(/가로[:\s]*(\d{3,4})[^\d]{0,20}세로[:\s]*(\d{3,4})[^\d]{0,20}높이[:\s]*(\d{3,4})/);
+  if (sizeM1) {
+    공간사이즈 = `${sizeM1[1]} × ${sizeM1[2]} × ${sizeM1[3]} (mm)`;
+  } else {
+    const sizeM2 = allText.match(/(\d{3,4})[^\d\n]{0,15}(\d{3,4})[^\d\n]{0,15}(\d{3,4})/);
+    if (sizeM2) 공간사이즈 = `${sizeM2[1]} × ${sizeM2[2]} × ${sizeM2[3]}`;
+  }
+
+  // 추가옵션
+  const optPairs = [
+    [/거울장/, '거울장'], [/아일랜드장/, '아일랜드장'], [/화장대/, '화장대'],
+    [/[2-4]단\s*서랍|서랍장?/, '서랍'], [/이불장/, '이불장'],
+    [/바지걸이/, '바지걸이'], [/디바이더/, '디바이더'],
+  ];
+  const foundOpts = optPairs.filter(([re]) => re.test(allText)).map(([, label]) => label);
+  const 추가옵션 = foundOpts.length ? foundOpts.join(', ') : null;
+
+  // 선반색상 (복합어 우선)
+  const shelfColors = ['다크월넛', '화이트오크', '스톤그레이', '진그레이', '솔리드화이트'];
+  const 선반색상 = shelfColors.find(c => allText.includes(c)) || null;
+
+  // 프레임색상 (화이트오크와 혼동 방지)
+  let 프레임색상 = null;
+  if (/블랙/.test(allText))              프레임색상 = '블랙';
+  else if (/실버/.test(allText))         프레임색상 = '실버';
+  else if (/골드/.test(allText))         프레임색상 = '골드';
+  else if (/화이트(?!오크)/.test(allText)) 프레임색상 = '화이트';
+
+  // 이름: 고객이 직접 말했거나 bot이 문장 맨 앞에서 "OO님" 으로 부른 경우만 인정
+  // "안녕하세요 고객님"의 "하세요" 같은 오탐 방지
+  let 이름 = null;
+  const nameFromUser = userText.match(/(?:이름|성함)[은는이가]?\s*([가-힣]{2,4})/);
+  if (nameFromUser && !/고객|모르|없|미정|비밀/.test(nameFromUser[1])) {
+    이름 = nameFromUser[1];
+  } else {
+    // bot 메시지 줄 첫 단어 + 님 패턴 (예: "홍길동님, 안녕하세요")
+    const nameFromBot = botText.match(/^([가-힣]{2,4})\s*님[,\s!]/m);
+    if (nameFromBot) 이름 = nameFromBot[1];
+  }
+
+  // 연락처: 휴대폰 번호
+  let 연락처 = null;
+  const phoneM = allText.match(/01[016789][-\s]?\d{3,4}[-\s]?\d{4}/);
+  if (phoneM) 연락처 = phoneM[0].replace(/\s/g, '');
+
+  return { 이름, 연락처, 설치지역, 공간사이즈, 형태, 추가옵션, 프레임색상, 선반색상, 요청사항: null };
+}
+
+/**
+ * AI가 출력한 주문서/견적서에서 필드 추출.
+ * 주문서 없으면 대화 전체에서 베스트에포트 추출.
  */
 function extractSessionFields(messages) {
   const msgs = messages || [];
@@ -424,11 +503,8 @@ function extractSessionFields(messages) {
     };
   }
 
-  // 주문서 없음 → 전부 미수집
-  return {
-    이름: null, 연락처: null, 설치지역: null, 공간사이즈: null,
-    형태: null, 추가옵션: null, 프레임색상: null, 선반색상: null, 요청사항: null,
-  };
+  // 주문서 없음 → 대화 전체에서 베스트에포트 추출
+  return extractFieldsFromConversation(msgs);
 }
 
 // 고객 관심 키워드 — 매 호출마다 재생성하지 않도록 모듈 레벨에 정의
