@@ -155,12 +155,44 @@ export function continueFromHistory(idx) {
   const s = currentList()[idx];
   if (!s) return;
   document.getElementById('historyDrawer').classList.remove('open');
+
+  /* 이전 대화 요약을 Claude history에 주입 */
+  if (typeof window.injectPreviousContext !== 'function') {
+    console.warn('[history.js] window.injectPreviousContext 미등록 — context 주입 스킵됨');
+  } else {
+    const msgs = s.메시지목록 || [];
+    const lines = [];
+
+    /* 주요 항목 (지역·형태 등) */
+    const items = Object.entries(s.주요항목 || {});
+    if (items.length) {
+      lines.push('【이전 상담 핵심 정보】');
+      items.forEach(([k, v]) => lines.push(`- ${k}: ${v}`));
+    }
+
+    /* 마지막 10개 메시지 요약 (이미지·파일 제외) */
+    const textMsgs = msgs.slice(-10).filter(m => {
+      const t = String(m.content || '');
+      return !t.startsWith('[이미지]') && !t.startsWith('[파일:');
+    });
+    if (textMsgs.length) {
+      lines.push('【이전 상담 대화 내용 (최근 순)】');
+      textMsgs.forEach(m => {
+        const who = m.role === 'bot' ? '루마네' : '고객';
+        lines.push(`${who}: ${String(m.content || '').slice(0, 200)}`);
+      });
+    }
+
+    lines.push(`상담 일시: ${s.마지막상담일시}`);
+    window.injectPreviousContext(lines.join('\n'));
+  }
+
   setTimeout(() => {
     addMsg('bot',
-      `이전 상담 내역이 있습니다 😊\n\n` +
+      `이전 상담 내역을 불러왔어요 😊\n\n` +
       `📅 마지막 상담: ${s.마지막상담일시}\n` +
       `📍 ${s.주요항목.지역 || '-'} · ${s.주요항목.형태 || '-'}\n\n` +
-      `이전에 상담하셨던 내용을 바탕으로 이어서 진행할까요?\n변경하실 내용이 있으시면 말씀해 주세요!`
+      `이전에 상담하셨던 내용을 바탕으로 이어서 진행할게요!\n변경하실 내용이 있으시면 말씀해 주세요 😊`
     );
   }, 400);
 }

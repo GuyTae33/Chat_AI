@@ -20,7 +20,7 @@ const IS_TEST = new URLSearchParams(window.location.search).get('test') === '1';
 /* ── 닉네임: localStorage에 저장 ── */
 const NICKNAME_KEY = '루마네_닉네임';
 let userNickname = localStorage.getItem(NICKNAME_KEY) || '';
-import { todayStr } from './utils.js';
+import { todayStr, esc } from './utils.js';
 import {
   initUI, setLoading, getIsLoading,
   addMsg, addImageMsg, addFileMsg, initFileInput,
@@ -66,7 +66,9 @@ function saveHistory() {
 }
 
 function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+  try {
+    return (JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')).filter(m => !m.injected);
+  } catch { return []; }
 }
 
 function isSessionExpired() {
@@ -89,7 +91,7 @@ function archiveCurrent() {
     const archive = pruneArchive(raw);
     const now = new Date();
     const label = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    archive.unshift({ savedAt: label, timestamp: Date.now(), messages: [...history] });
+    archive.unshift({ savedAt: label, timestamp: Date.now(), messages: history.filter(m => !m.injected) });
     if (archive.length > 10) archive.length = 10;
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
   } catch { /* 무시 */ }
@@ -508,12 +510,12 @@ async function send(prefilledText) {
     const errDiv = document.createElement('div');
     errDiv.className = 'msg-group bot';
     errDiv.dataset.mid = errMid;
-    errDiv.innerHTML = `<div class="av">👩‍💼</div><div class="msg-body"><div class="msg-sender">루마네</div><div class="bubble bot">⚠️ 오류가 발생했습니다.<br>${err.message}${failedText ? `<br><button style="margin-top:8px;padding:4px 10px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;" data-retry-text="${failedText.replace(/"/g, '&quot;')}">↩ 다시 시도</button>` : ''}</div></div>`;
+    errDiv.innerHTML = `<div class="av">👩‍💼</div><div class="msg-body"><div class="msg-sender">루마네</div><div class="bubble bot">⚠️ 오류가 발생했습니다.<br>${esc(err.message)}${failedText ? `<br><button style="margin-top:8px;padding:4px 10px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;cursor:pointer;" data-retry>↩ 다시 시도</button>` : ''}</div></div>`;
     document.getElementById('msgs').appendChild(errDiv);
     document.getElementById('msgs').scrollTop = 99999;
 
     if (failedText) {
-      errDiv.querySelector('[data-retry-text]')?.addEventListener('click', () => {
+      errDiv.querySelector('[data-retry]')?.addEventListener('click', () => {
         // history에서 실패한 user 메시지 제거 후 재전송
         const idx = history.findLastIndex(m => m.role === 'user' && m.content === failedText);
         if (idx !== -1) history.splice(idx, 1);
@@ -647,6 +649,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ── 검색 초기화 ── */
   initSearch();
+
+  /* 이전 상담 내역을 현재 history에 주입 — history.js에서 호출 */
+  window.injectPreviousContext = function(summaryText) {
+    history = history.filter(m => !m.injected); // 이전 주입 항목 제거 (연속 호출 대비)
+    const safe = String(summaryText).slice(0, 2000);
+    history.unshift(
+      { role: 'user',      content: '[이전 상담 내용 요약 참고 요청]', injected: true },
+      { role: 'assistant', content: safe, injected: true }
+    );
+    /* saveHistory() 생략 — 주입 항목을 localStorage에 저장하지 않음 */
+  };
 
   /* HTML onclick에서 호출 가능하도록 window에 등록 */
   window.toggleHistory      = toggleHistory;
