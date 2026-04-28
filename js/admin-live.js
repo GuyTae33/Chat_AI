@@ -3,11 +3,45 @@
 ================================================================ */
 
 /**
+ * 저장된 상담 미확인 건수 확인 (60초마다 백그라운드 실행)
+ */
+async function checkHistoryCount() {
+  if (!serverOnline) return;
+  if (document.querySelector('.tab-btn.active')?.id === 'tab-history') {
+    localStorage.setItem('lastSeenHistoryAt', new Date().toISOString());
+    updateHistoryBadge(0);
+    return;
+  }
+  try {
+    const res = await fetch(`${SERVER}/api/admin/conversations`, { headers: adminHeaders() });
+    if (!res.ok) return;
+    // await 이후 탭 상태 재확인 (race condition 방지)
+    if (document.querySelector('.tab-btn.active')?.id === 'tab-history') return;
+    const data = await res.json();
+    const conversations = data.conversations || [];
+    let lastSeenAt = localStorage.getItem('lastSeenHistoryAt');
+    if (!lastSeenAt) {
+      lastSeenAt = new Date().toISOString();
+      localStorage.setItem('lastSeenHistoryAt', lastSeenAt);
+    }
+    const seenDate = new Date(lastSeenAt);
+    const unread = conversations.filter(c => c.saved_at && new Date(c.saved_at) > seenDate).length;
+    if (typeof updateHistoryBadge === 'function') updateHistoryBadge(unread);
+  } catch { /* 무시 */ }
+}
+
+/**
  * 백그라운드 세션 카운트 폴링 (항상 실행, 5초마다)
  * — 라이브 탭 밖에서도 새 손님 알림 뱃지 유지
  */
+
 function startBgPolling() {
   if (bgPollTimer) return;
+  // 저장된 상담 미확인 카운트 — 60초마다 독립 실행
+  if (!historyBgPollTimer) {
+    checkHistoryCount();
+    historyBgPollTimer = setInterval(checkHistoryCount, 60000);
+  }
   bgPollTimer = setInterval(async () => {
 
     // ── 오프라인이면 재연결 시도 (Render.com 절전 복귀 대응) ──
@@ -47,6 +81,7 @@ function startBgPolling() {
 function stopBgPolling() {
   clearInterval(bgPollTimer);
   bgPollTimer = null;
+  // historyBgPollTimer는 의도적으로 유지 — 탭과 무관하게 항상 실행
 }
 
 /**
@@ -202,7 +237,10 @@ function renderDashboardSessions(sessions) {
           ${isAdmin ? '👩‍💼' : '🤖'}
         </div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;margin-bottom:3px;">${escAdmin(s.customerName)}</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:5px;">
+            ${escAdmin(s.customerName)}
+            ${s.isTest ? '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:700;">테스트</span>' : ''}
+          </div>
           <div style="font-size:12px;color:#6b7280;">💬 ${s.messageCount}개 메시지 · ${ago}</div>
           ${s.tokens ? `<div style="font-size:11px;color:#7c3aed;font-weight:600;margin-top:2px;">🪙 ₩${s.tokens.costKRW.toLocaleString()} · ${s.tokens.totalTokens.toLocaleString()}토큰</div>` : ''}
         </div>
