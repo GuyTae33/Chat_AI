@@ -146,6 +146,7 @@ function statDetailGoBack() {
     renderWeeklyBreakdown(_monthSessionsCache);
     return;
   }
+  if (_monthSessionsCache !== null) return; // 예상 외 상태 방어
   document.getElementById('statDetailTitle').textContent = _statLabel;
   document.getElementById('statDetailCount').textContent = `총 ${_statSessions.length}건`;
   document.getElementById('statDetailBack').style.display = 'none';
@@ -253,7 +254,7 @@ function openWeekDetail(weekLabel) {
     return getWeekOfMonth(kd) === weekLabel;
   });
 
-  document.getElementById('statDetailBack').style.display = 'inline';
+  document.getElementById('statDetailBack').style.display = 'inline-block';
   document.getElementById('statDetailTitle').textContent  = `이번 달 · ${weekLabel}`;
   document.getElementById('statDetailCount').textContent  = `총 ${weekSessions.length}건`;
 
@@ -276,7 +277,7 @@ function openWeekDetail(weekLabel) {
     const mmdd = date.slice(5).replace('-', '/');
     const divider = `<div style="display:flex;align-items:center;gap:8px;margin:16px 0 10px;">
       <div style="flex:1;height:1px;background:#e5e7eb;"></div>
-      <div style="font-size:12px;font-weight:600;color:#6b7280;white-space:nowrap;">${mmdd}(${dow})</div>
+      <div style="font-size:12px;font-weight:600;color:#6b7280;white-space:nowrap;">${escAdmin(mmdd)}(${dow})</div>
       <div style="flex:1;height:1px;background:#e5e7eb;"></div>
     </div>`;
     const rows = list.map(s => `
@@ -311,17 +312,19 @@ async function loadQuotes() {
 
     // 미확인 견적 배지 — 견적 탭이 열려 있으면 자동 확인
     const onQuotesTab = document.querySelector('.tab-btn.active')?.id === 'tab-quotes';
-    let lastSeenQuotesAt = localStorage.getItem('lastSeenQuotesAt');
-    if (!lastSeenQuotesAt) {
-      lastSeenQuotesAt = new Date().toISOString();
-      localStorage.setItem('lastSeenQuotesAt', lastSeenQuotesAt);
-    }
     if (onQuotesTab) {
       localStorage.setItem('lastSeenQuotesAt', new Date().toISOString());
       updateQuoteBadge(0);
     } else {
-      const unread = allQuotes.filter(q => q.접수시간 && q.접수시간 > lastSeenQuotesAt).length;
-      updateQuoteBadge(unread);
+      const lastSeenQuotesAt = localStorage.getItem('lastSeenQuotesAt');
+      if (!lastSeenQuotesAt) {
+        localStorage.setItem('lastSeenQuotesAt', new Date().toISOString());
+        updateQuoteBadge(0);
+      } else {
+        const seenDate = new Date(lastSeenQuotesAt);
+        const unread = allQuotes.filter(q => q.접수시간 && new Date(q.접수시간) > seenDate).length;
+        updateQuoteBadge(unread);
+      }
     }
 
     updateUI();
