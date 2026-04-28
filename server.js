@@ -1398,6 +1398,7 @@ app.get('/api/quotes', async (_req, res) => {
       },
       사진여부: r.has_photo || '',
       파일명: r.file_name || '',
+      출처: r.source || '직접입력',
     }));
     res.json({ quotes });
   } catch (err) {
