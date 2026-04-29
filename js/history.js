@@ -6,26 +6,47 @@ import { addMsg } from './ui.js';
 
 const ARCHIVE_KEY = '루마네_히스토리_아카이브';
 
-/* bot 메시지 전체 텍스트에서 지역·형태 추출 */
+/* 대화 전체에서 주요 정보 추출 */
 function extractKeyItems(messages) {
-  const botText = messages
-    .filter(m => m.role === 'assistant')
-    .map(m => m.content || '')
-    .join('\n');
-
+  const allText = messages.map(m => m.content || '').join('\n');
+  const botText = messages.filter(m => m.role === 'assistant').map(m => m.content || '').join('\n');
   const result = {};
 
-  // 지역: 시·도 + 시·군·구 패턴 (예: 서울 강남구, 경기 수원시, 인천 남동구)
-  const regionMatch = botText.match(
+  const regionMatch = allText.match(
     /(서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)\s*[\w가-힣]*[시군구]/
   );
   if (regionMatch) result['지역'] = regionMatch[0].trim();
 
-  // 형태: ㄱ자/ㄷ자/ㅡ자/일자/ㄴ자 등
-  const shapeMatch = botText.match(/[ㄱㄴㄷㄹㅡ일][\s]?자[\s]?형?/);
+  const shapeMatch = allText.match(/[ㄱㄴㄷㄹㅡ일1]{1,2}[\s]?자[\s]?형?/);
   if (shapeMatch) result['형태'] = shapeMatch[0].trim();
 
+  const sizeMatch = allText.match(/(\d{3,4})\s*[×xX]\s*(\d{3,4})/);
+  if (sizeMatch) result['치수'] = sizeMatch[0];
+
+  if (/서랍/.test(allText)) result['옵션'] = (result['옵션'] || '') + '서랍 ';
+  if (/거울/.test(allText)) result['옵션'] = (result['옵션'] || '') + '거울 ';
+  if (/선반/.test(allText))  result['옵션'] = (result['옵션'] || '') + '선반 ';
+  if (result['옵션']) result['옵션'] = result['옵션'].trim();
+
+  if (/견적|합계|총액|원/.test(botText)) result['견적'] = '견적 산출됨';
+
   return result;
+}
+
+/* 상담 요약 텍스트 생성 */
+function generateSummary(messages) {
+  const items = extractKeyItems(messages);
+  const parts = [];
+  if (items['지역']) parts.push(items['지역']);
+  if (items['형태']) parts.push(items['형태'] + ' 구조');
+  if (items['치수']) parts.push(items['치수']);
+  if (items['옵션']) parts.push(items['옵션']);
+  if (items['견적']) parts.push(items['견적']);
+  if (parts.length === 0) {
+    const firstUser = messages.find(m => m.role === 'user')?.content || '';
+    return firstUser.slice(0, 60) || '상담 내용 없음';
+  }
+  return parts.join(' · ');
 }
 
 /* localStorage 아카이브 → 히스토리 항목 변환 */
@@ -42,7 +63,7 @@ function transformArchiveItem(item, idx, arr) {
     종료일시:       item.savedAt || '-',
     마지막상담일시: item.savedAt || '-',
     재상담여부:     idx > 0,
-    요약:           `${item.savedAt || '-'} 상담`,
+    요약:           generateSummary(messages),
     주요항목:       extractKeyItems(messages),
     마지막질문:     lastUser,
     마지막답변:     lastBot,
@@ -106,16 +127,12 @@ function renderHistoryList() {
         ${s.재상담여부 ? '<span class="hs-rebadge">재상담</span>' : ''}
       </div>
       <div class="history-session-body">
-        <div class="hs-summary">${esc(s.요약)}</div>
         <div class="hs-tags">
           ${Object.entries(s.주요항목 || {}).map(([k, v]) =>
             `<span class="hs-tag">${esc(k)}: ${esc(v)}</span>`
           ).join('')}
         </div>
-        <div class="hs-last">
-          <b>마지막 질문:</b> ${esc(s.마지막질문)}<br>
-          <b>마지막 답변:</b> ${esc(s.마지막답변)}
-        </div>
+        <div class="hs-summary">${esc(s.요약)}</div>
       </div>
       <div class="hs-btns">
         <button class="hs-btn outline" onclick="showTranscript(${i})">💬 원문 보기</button>
@@ -154,7 +171,6 @@ export function closeTranscript(e) {
 export function continueFromHistory(idx) {
   const s = currentList()[idx];
   if (!s) return;
-  document.getElementById('historyDrawer').classList.remove('open');
 
   /* 이전 대화 요약을 Claude history에 주입 */
   if (typeof window.injectPreviousContext !== 'function') {
@@ -163,14 +179,12 @@ export function continueFromHistory(idx) {
     const msgs = s.메시지목록 || [];
     const lines = [];
 
-    /* 주요 항목 (지역·형태 등) */
     const items = Object.entries(s.주요항목 || {});
     if (items.length) {
       lines.push('【이전 상담 핵심 정보】');
       items.forEach(([k, v]) => lines.push(`- ${k}: ${v}`));
     }
 
-    /* 마지막 10개 메시지 요약 (이미지·파일 제외) */
     const textMsgs = msgs.slice(-10).filter(m => {
       const t = String(m.content || '');
       return !t.startsWith('[이미지]') && !t.startsWith('[파일:');
@@ -187,14 +201,9 @@ export function continueFromHistory(idx) {
     window.injectPreviousContext(lines.join('\n'));
   }
 
-  setTimeout(() => {
-    addMsg('bot',
-      `이전 상담 내역을 불러왔어요 😊\n\n` +
-      `📅 마지막 상담: ${s.마지막상담일시}\n` +
-      `📍 ${s.주요항목.지역 || '-'} · ${s.주요항목.형태 || '-'}\n\n` +
-      `이전에 상담하셨던 내용을 바탕으로 이어서 진행할게요!\n변경하실 내용이 있으시면 말씀해 주세요 😊`
-    );
-  }, 400);
+  /* 히스토리 드로어 닫고 원문 오버레이 열기 */
+  document.getElementById('historyDrawer').classList.remove('open');
+  showTranscript(idx);
 }
 
 window.showTranscript      = showTranscript;
