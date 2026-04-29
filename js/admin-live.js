@@ -305,6 +305,7 @@ window.getAdminSetting  = getAdminSetting;
 
 /* ── 세션별 마지막으로 읽은 메시지 수 추적 (서버 저장) ── */
 const _seenMsgCounts = {};
+let _seenCountsLoaded = false;
 function _getSeenSessions() {
   return new Set(Object.keys(_seenMsgCounts));
 }
@@ -327,6 +328,7 @@ async function _loadSeenCounts() {
       localStorage.removeItem(oldKey);
       localStorage.removeItem('lumane_seen_counts');
     }
+    _seenCountsLoaded = true;
     // 카운트 로드 완료 후 캐시된 데이터로 대시보드 재렌더링
     if (_cachedLiveSessions.length > 0 || _cachedConversations.length > 0) {
       renderDashboardSessions(_cachedLiveSessions, _cachedConversations);
@@ -365,7 +367,8 @@ function markSessionSeen(sessionId) {
     if (detailBtn) detailBtn.style.color = '#3b82f6';
   }
 }
-window.markSessionSeen = markSessionSeen;
+window.markSessionSeen   = markSessionSeen;
+window._getSeenSessions  = _getSeenSessions;
 
 /* ── options_text 파싱 ("기본행거 66cm: 70,000원 / 이불장: 200,000원" → 배열) ── */
 function _parseOptionsItems(optText) {
@@ -585,6 +588,12 @@ function renderDashboardSessions(sessions) {
 
   _cachedLiveSessions = sessions;
   _refreshDashBadge();
+
+  // 서버 읽음 데이터 첫 로드 후 테이블이 비어있으면 현재 모든 세션을 읽음 처리 (초기화)
+  if (_seenCountsLoaded && Object.keys(_seenMsgCounts).length === 0) {
+    sessions.forEach(s => { if (s.id) _saveSeenCount(s.id, s.messageCount ?? 0); });
+    savedConvs.forEach(c => { if (c.id) _saveSeenCount(c.id, c.message_count ?? 0); });
+  }
 
   const seenSessions = _getSeenSessions();
 

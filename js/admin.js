@@ -846,7 +846,7 @@ function renderHistoryList(list) {
     ? '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#7c3aed;font-weight:600;">수동</span>'
     : '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0fdf4;color:#16a34a;font-weight:600;">자동</span>';
 
-  const _seenSet = (() => { try { const p = JSON.parse(localStorage.getItem('lumane_seen_sessions') || '[]'); return new Set(Array.isArray(p) ? p : []); } catch { return new Set(); } })();
+  const _seenSet = window._getSeenSessions?.() || new Set();
 
   listEl.innerHTML = list.map(c => {
     const isNew = c.id && !_seenSet.has(c.id);
