@@ -200,7 +200,7 @@ function renderLiveSessionList(sessions) {
   const liveHtml = sessions.map(s => {
     const isSelected = s.id === liveSelectedId;
     const isAdmin    = s.mode === 'admin';
-    const isNew      = s.id && !seenNow.has(s.id);
+    const isNew      = s.id && !seenNow.has(String(s.id));
     const ago        = timeSince(new Date(s.lastMessageAt));
     const msgCount   = s.messageCount ?? 0;
     return `
@@ -237,7 +237,7 @@ function renderLiveSessionList(sessions) {
     const label      = getConvLabel(c);
     const timeStr    = c.saved_at ? timeSince(new Date(c.saved_at)) : '';
     const sub        = [c.region, c.layout, `💬 ${c.message_count || 0}개`].filter(Boolean).join(' · ');
-    const isNew      = !seenNow.has(c.id);
+    const isNew      = !seenNow.has(String(c.id));
     return `
       <div data-conv-id="${escAttr(c.id)}"
         onclick="selectSavedConvInPanel('${escAttr(c.id)}')"
@@ -337,18 +337,20 @@ async function _loadSeenCounts() {
   } catch {}
 }
 function _saveSeenCount(sessionId, count) {
-  _seenMsgCounts[sessionId] = count;
+  const id = String(sessionId);
+  _seenMsgCounts[id] = count;
   fetch('/api/admin/seen-counts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, count })
+    body: JSON.stringify({ session_id: id, count })
   }).catch(() => {});
 }
 /* ── 서버 재시작 등으로 세션이 리셋된 경우 추적 ── */
 const _resetSessions = new Set();
 function markSessionSeen(sessionId) {
   if (!sessionId) return;
-  if (_seenMsgCounts[sessionId] === undefined) _saveSeenCount(sessionId, 0);
+  const id = String(sessionId);
+  if (_seenMsgCounts[id] === undefined) _saveSeenCount(id, 0);
   _refreshDashBadge();
   // 실시간 세션 카드 즉시 업데이트
   const sessionCard = document.querySelector(`[data-session-id="${CSS.escape(sessionId)}"]`);
@@ -397,8 +399,8 @@ function _refreshDashBadge() {
   const seen    = _getSeenSessions();
   const liveNew = _cachedLiveSessions.filter(s => {
     if (!s.id) return false;
-    if (!seen.has(s.id) || _resetSessions.has(s.id)) return true;
-    const lastSeen = _seenMsgCounts[s.id];
+    if (!seen.has(String(s.id)) || _resetSessions.has(String(s.id))) return true;
+    const lastSeen = _seenMsgCounts[String(s.id)];
     return lastSeen !== undefined && (s.messageCount ?? 0) > lastSeen;
   }).length;
   const convNew = _cachedConversations.filter(c => c.id && !seen.has(c.id)).length;
@@ -601,14 +603,14 @@ function renderDashboardSessions(sessions) {
   sessions.forEach(s => {
     if (!s.id) return;
     const msgCount = s.messageCount ?? 0;
-    const tracked  = _seenMsgCounts[s.id];
+    const sid = String(s.id);
+    const tracked  = _seenMsgCounts[sid];
     if (tracked !== undefined && msgCount < tracked) {
-      // 서버 재시작 등으로 메시지 수가 줄어든 경우 → 새 채팅으로 취급
-      delete _seenMsgCounts[s.id];
-      _resetSessions.add(s.id);
+      delete _seenMsgCounts[sid];
+      _resetSessions.add(sid);
     }
-    if (seenSessions.has(s.id) && _seenMsgCounts[s.id] === undefined && !_resetSessions.has(s.id)) {
-      _seenMsgCounts[s.id] = msgCount; // 이 페이지 로드 시점 베이스라인
+    if (seenSessions.has(sid) && _seenMsgCounts[sid] === undefined && !_resetSessions.has(sid)) {
+      _seenMsgCounts[sid] = msgCount;
     }
   });
 
@@ -641,8 +643,9 @@ function renderDashboardSessions(sessions) {
       const isAdmin  = s.mode === 'admin';
       const ago      = timeSince(new Date(s.lastMessageAt));
       const msgCount = s.messageCount ?? 0;
-      const isNew    = !seenSessions.has(s.id) || _resetSessions.has(s.id);
-      const lastSeen = _seenMsgCounts[s.id];
+      const sid      = String(s.id);
+      const isNew    = !seenSessions.has(sid) || _resetSessions.has(sid);
+      const lastSeen = _seenMsgCounts[sid];
       const hasNewMsg = !isNew && lastSeen !== undefined && msgCount > lastSeen;
       const unread   = isNew || hasNewMsg;
       const unreadCount = isNew ? msgCount : (hasNewMsg ? msgCount - lastSeen : 0);
@@ -675,7 +678,7 @@ function renderDashboardSessions(sessions) {
         </div>`;
     } else {
       const c      = item.data;
-      const isNew  = !seenSessions.has(c.id);
+      const isNew  = !seenSessions.has(String(c.id));
       const timeStr = c.saved_at
         ? new Date(c.saved_at).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
         : '-';
