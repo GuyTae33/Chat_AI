@@ -385,7 +385,7 @@ async function renderQuoteImage(text) {
     } else if (/주문내역|평면도/.test(t)) {
       html += `<div style="background:#c0392b;color:#fff;padding:5px 12px;font-weight:bold;font-size:12px;">${esc(t)}</div>`;
     } else if (/^\(주\)루마네/.test(t)) {
-      html += `<div style="background:#444;color:#fff;padding:6px 12px;font-size:10px;">${esc(t)}</div>`;
+      // 푸터 줄 제외
     } else {
       html += `<div style="padding:2px 12px;">${esc(t)}</div>`;
     }
