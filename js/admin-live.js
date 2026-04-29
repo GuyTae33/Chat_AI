@@ -318,22 +318,9 @@ const _notifications = [];
 let _liveNotifReady  = false;
 let _convNotifReady  = false;
 
-const _NOTIF_CONV_KEY = 'lumane_seen_notif_convs';
-const _NOTIF_LIVE_KEY = 'lumane_seen_notif_live';
-function _getSeenNotifConvs() {
-  try { const p = JSON.parse(localStorage.getItem(_NOTIF_CONV_KEY) || '[]'); return new Set(Array.isArray(p) ? p : []); } catch { return new Set(); }
-}
-function _addSeenNotifConv(id) {
-  const set = _getSeenNotifConvs(); set.add(id);
-  const arr = [...set]; localStorage.setItem(_NOTIF_CONV_KEY, JSON.stringify(arr.length > 200 ? arr.slice(-200) : arr));
-}
-function _getSeenNotifLive() {
-  try { const p = JSON.parse(localStorage.getItem(_NOTIF_LIVE_KEY) || '[]'); return new Set(Array.isArray(p) ? p : []); } catch { return new Set(); }
-}
-function _addSeenNotifLive(id) {
-  const set = _getSeenNotifLive(); set.add(id);
-  const arr = [...set]; localStorage.setItem(_NOTIF_LIVE_KEY, JSON.stringify(arr.length > 200 ? arr.slice(-200) : arr));
-}
+/* 알림 중복 방지 — 페이지 세션 내 인메모리 (localStorage 오염 방지) */
+const _notifiedLiveIds = new Set();
+const _notifiedConvIds = new Set();
 
 function _addNotif(type, title, body, targetId) {
   _notifications.unshift({ id: String(_notifSeq++), type, title, body, targetId, time: new Date(), read: false });
@@ -375,25 +362,25 @@ function _renderNotifList() {
 }
 
 function _checkConvNotifications() {
-  const seen = _getSeenNotifConvs();
   if (!_convNotifReady) {
-    _cachedConversations.forEach(c => { if (c.id) _addSeenNotifConv(c.id); });
+    _cachedConversations.forEach(c => { if (c.id) _notifiedConvIds.add(c.id); });
     _convNotifReady = true;
     return;
   }
   _cachedConversations.forEach(c => {
-    if (!c.id || seen.has(c.id)) return;
-    _addSeenNotifConv(c.id);
+    if (!c.id || _notifiedConvIds.has(c.id)) return;
+    _notifiedConvIds.add(c.id);
     const region = c.region ? ' · ' + c.region : '';
     _addNotif('saved', '상담이 저장됐습니다', getConvLabel(c) + region, c.id);
   });
 }
 
 function _checkLiveNotifications(sessions) {
-  const seen = _getSeenNotifLive();
+  const adminSeen = _getSeenSessions();
   sessions.forEach(s => {
-    if (!s.id || seen.has(s.id)) return;
-    _addSeenNotifLive(s.id);
+    if (!s.id || _notifiedLiveIds.has(s.id)) return;
+    _notifiedLiveIds.add(s.id);
+    if (adminSeen.has(s.id)) return;
     _addNotif('live_start', '새로운 고객님이 오셨습니다 🙋', s.customerName || '고객', s.id);
   });
   _liveNotifReady = true;
