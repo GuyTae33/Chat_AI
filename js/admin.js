@@ -842,23 +842,23 @@ function renderHistoryList(list) {
     ? '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#ede9fe;color:#7c3aed;font-weight:600;">수동</span>'
     : '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f0fdf4;color:#16a34a;font-weight:600;">자동</span>';
 
-  const lastSeenAt = localStorage.getItem('lastSeenHistoryAt');
-  const seenDate = lastSeenAt ? new Date(lastSeenAt) : null;
+  const _seenSet = (() => { try { const p = JSON.parse(localStorage.getItem('lumane_seen_sessions') || '[]'); return new Set(Array.isArray(p) ? p : []); } catch { return new Set(); } })();
 
   listEl.innerHTML = list.map(c => {
-    const isNew = seenDate && c.saved_at && new Date(c.saved_at) > seenDate;
+    const isNew = c.id && !_seenSet.has(c.id);
+    const borderColor = isNew ? '#ef4444' : '#3b82f6';
     const savedAt = c.saved_at ? new Date(c.saved_at).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '-';
     const summaryObj = (() => { try { return typeof c.summary === 'string' ? JSON.parse(c.summary) : c.summary; } catch { return null; } })();
     const summaryText = summaryObj?.상담요약 || '';
     return `
-    <div style="background:#fff;border:1px solid ${isNew ? '#fbbf24' : '#e5e7eb'};border-radius:12px;padding:14px 18px;transition:box-shadow .15s;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;"
+    <div style="background:#fff;border:1px solid #e5e7eb;border-left:4px solid ${borderColor};border-radius:12px;padding:14px 18px;transition:box-shadow .15s;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;"
       onmouseover="this.style.boxShadow='0 2px 12px rgba(0,0,0,.08)'"
       onmouseout="this.style.boxShadow='none'">
-      <div onclick="openHistoryDetail('${escAttr(c.id)}')" style="cursor:pointer;">
+      <div onclick="if(window.markSessionSeen)markSessionSeen('${escAttr(c.id)}');openHistoryDetail('${escAttr(c.id)}')" style="cursor:pointer;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:15px;font-weight:700;">${escAdmin(c.customer_name || '(이름 미수집)')}</span>
           ${badge(c.save_reason)}
-          ${isNew ? '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#fef3c7;color:#d97706;font-weight:700;">NEW</span>' : ''}
+          ${isNew ? '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#ef4444;color:#fff;font-weight:700;">NEW</span>' : ''}
         </div>
         <div style="font-size:12.5px;color:#6b7280;display:flex;gap:14px;flex-wrap:wrap;${summaryText ? 'margin-bottom:6px;' : ''}">
           <span>📞 ${escAdmin(c.phone || '-')}</span>
