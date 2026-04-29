@@ -9,7 +9,6 @@ async function checkHistoryCount() {
   if (!serverOnline) return;
   /* 대시보드 탭에 있으면 lastSeenHistoryAt 갱신 (저장된 상담이 대시보드에 통합됨) */
   if (document.querySelector('.tab-btn.active')?.id === 'tab-dashboard') {
-    localStorage.setItem('lastSeenHistoryAt', new Date().toISOString());
     updateHistoryBadge(0);
     const el = document.getElementById('statUnread');
     const card = el?.closest('.stats-card--unread');
@@ -117,6 +116,8 @@ function startLivePolling() {
   stopBgPolling(); // live 탭에선 빠른 폴링이 대신함
   fetchLiveSessions();
   livePollTimer = setInterval(fetchLiveSessions, 1000);
+  // 대화 탭 진입 시 저장된 대화 즉시 로드 (캐시 없을 때 대비)
+  if (_cachedConversations.length === 0) fetchDashboardConversations();
 }
 
 /**
@@ -231,7 +232,7 @@ function renderLiveSessionList(sessions) {
       </div>`;
   }).join('');
 
-  // ── 완료된 대화 (저장된 상담) ──
+  // ── 이전 대화 (실시간 자동 기록됨) ──
   const savedSorted = [...savedConvs].sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
   const savedHtml = savedSorted.map(c => {
     const isSelected = _selectedSavedConvId === c.id;
@@ -243,10 +244,10 @@ function renderLiveSessionList(sessions) {
       <div data-conv-id="${escAttr(c.id)}"
         onclick="selectSavedConvInPanel('${escAttr(c.id)}')"
         style="padding:12px 14px;border-radius:10px;cursor:pointer;margin-bottom:6px;
-          border:2px solid ${isSelected ? '#f59e0b' : '#e5e7eb'};
-          background:${isSelected ? '#fffbeb' : '#fff'};transition:all .15s;">
+          border:2px solid ${isSelected ? '#7c3aed' : '#e5e7eb'};
+          background:${isSelected ? '#faf5ff' : '#fff'};transition:all .15s;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:18px;">📁</span>
+          <span style="font-size:18px;">👤</span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:${isNew ? '700' : '600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;">
               ${escAdmin(label)}
@@ -259,11 +260,7 @@ function renderLiveSessionList(sessions) {
       </div>`;
   }).join('');
 
-  const separator = sessions.length > 0 && savedSorted.length > 0
-    ? `<div style="font-size:11px;color:#d1d5db;text-align:center;padding:6px 4px;margin:4px 0;">── 완료된 대화 ──</div>`
-    : '';
-
-  container.innerHTML = liveHtml + separator + savedHtml;
+  container.innerHTML = liveHtml + savedHtml;
 
   // 토큰 맵 갱신
   for (const s of sessions) {
@@ -1168,10 +1165,9 @@ function renderLiveChatPanel(sess) {
   document.getElementById('livePanelMeta').textContent =
     `세션 ${sess.id.slice(0, 20)}… · 메시지 ${sess.messages.length}개${tkStr}`;
 
-  document.getElementById('livePanelActions').innerHTML = (isAdmin
+  document.getElementById('livePanelActions').innerHTML = isAdmin
     ? `<button class="btn btn-outline" onclick="releaseSession()" style="font-size:13px;">🤖 AI에게 넘기기</button>`
-    : `<button class="btn btn-primary" onclick="takeoverSession()" style="font-size:13px;">👩‍💼 난입하기</button>`)
-    + `<button class="btn btn-outline" onclick="saveConversationManual()" style="font-size:13px;">💾 저장</button>`;
+    : `<button class="btn btn-primary" onclick="takeoverSession()" style="font-size:13px;">👩‍💼 난입하기</button>`;
 
   msgs.innerHTML = (sess.messages || []).map(m => {
     const isUser     = m.role === 'user';
