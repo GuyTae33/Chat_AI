@@ -402,7 +402,12 @@ window.toggleNotifPanel = function() {
   const panel = document.getElementById('notifPanel');
   if (!panel) return;
   const open = panel.style.display !== 'none';
-  panel.style.display = open ? 'none' : 'flex';
+  if (open) {
+    panel.style.display = 'none';
+  } else {
+    panel.style.display = 'flex';
+    _renderNotifList();
+  }
 };
 
 window.handleNotifClick = function(id) {
