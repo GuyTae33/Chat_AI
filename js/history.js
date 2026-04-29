@@ -201,9 +201,8 @@ export function continueFromHistory(idx) {
     window.injectPreviousContext(lines.join('\n'));
   }
 
-  /* 히스토리 드로어 닫고 원문 오버레이 열기 */
+  /* 히스토리 드로어 닫기 */
   document.getElementById('historyDrawer').classList.remove('open');
-  showTranscript(idx);
 }
 
 window.showTranscript      = showTranscript;
