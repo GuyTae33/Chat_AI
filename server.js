@@ -601,6 +601,14 @@ function scoreRow(row, shape, unitsNum, optList) {
   return score;
 }
 
+// ── 임시 디버그: DB shape 목록 확인용 ───────────────────────────
+app.get('/api/debug-shapes', async (req, res) => {
+  const { data, error } = await supabase.from('dressroom_images').select('shape').limit(50);
+  if (error) return res.json({ error: error.message });
+  const shapes = [...new Set((data || []).map(r => JSON.stringify(r.shape)))];
+  res.json({ shapes });
+});
+
 // ── 예시 이미지 매칭 API (DB 기반) ───────────────────────────
 app.get('/api/find-example', chatRateLimit, async (req, res) => {
   let { shape = '', units = '', options = '' } = req.query;
