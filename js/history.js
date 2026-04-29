@@ -206,7 +206,18 @@ export function continueFromHistory(idx) {
 
   /* 채팅창에 이어하기 안내 메시지 표시 */
   const label = s.세션ID ? `${s.세션ID} 상담` : '이전 상담';
-  addMsg('assistant', `${label} 내용을 불러왔어요 😊 이어서 질문해 주세요!`);
+  const items = Object.entries(s.주요항목 || {});
+  const summaryLines = [`${label} 내용을 불러왔어요 😊`];
+  if (items.length) {
+    summaryLines.push('');
+    items.forEach(([k, v]) => summaryLines.push(`• ${k}: ${v}`));
+  } else if (s.요약) {
+    summaryLines.push('');
+    summaryLines.push(s.요약);
+  }
+  summaryLines.push('');
+  summaryLines.push('이어서 질문해 주세요!');
+  addMsg('assistant', summaryLines.join('\n'));
 }
 
 window.showTranscript      = showTranscript;
