@@ -292,6 +292,11 @@ function _refreshDashBadge() {
     badge.textContent = total;
     badge.style.display = total > 0 ? 'inline' : 'none';
   });
+  // 미확인 상담 stat 카드 동기화 (탭 뱃지와 동일 기준)
+  const statUnread = document.getElementById('statUnread');
+  const statCard   = statUnread?.closest('.stats-card--unread');
+  if (statUnread) statUnread.textContent = total;
+  if (statCard)   statCard.classList.toggle('no-unread', total === 0);
   const liveBadge = document.getElementById('liveBadge');
   if (liveBadge) {
     liveBadge.textContent = _cachedLiveSessions.length;
