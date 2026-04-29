@@ -364,9 +364,13 @@ function _renderNotifList() {
 }
 
 function _checkConvNotifications() {
+  let newCount = 0;
   _cachedConversations.forEach(c => {
     if (!c.id || _notifiedConvIds.has(c.id)) return;
     _notifiedConvIds.add(c.id);
+    /* 첫 로드 시 최근 3건만, 이후 폴링은 제한 없음 */
+    if (!_convNotifReady && newCount >= 3) return;
+    newCount++;
     const region = c.region ? ' · ' + c.region : '';
     _addNotif('saved', '새 상담이 저장됐습니다 📁', getConvLabel(c) + region, c.id);
   });
