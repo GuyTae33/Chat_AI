@@ -677,7 +677,6 @@ function switchTab(tab) {
   } else if (tab === 'live') {
     navItems[2].classList.add('active');
     document.getElementById('topbarTitle').textContent = '📡 라이브 상담';
-    document.getElementById('liveBadge').style.display = 'none';
     startLivePolling();
   } else if (tab === 'tokens') {
     document.getElementById('topbarTitle').textContent = '🪙 토큰 사용량';

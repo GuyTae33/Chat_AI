@@ -80,10 +80,11 @@ function startBgPolling() {
       if (!res.ok) return;
       const data = await res.json();
       const sessions = data.sessions || [];
-      const count  = sessions.length;
+      const count       = sessions.length;
+      const unreadCount = sessions.filter(s => s.id && !_getSeenSessions().has(s.id)).length;
       const badge   = document.getElementById('liveBadge');
       const countEl = document.getElementById('liveCount');
-      if (badge) { badge.style.display = count > 0 ? 'inline' : 'none'; badge.textContent = count; }
+      if (badge) { badge.style.display = unreadCount > 0 ? 'inline' : 'none'; badge.textContent = unreadCount; }
       if (countEl) countEl.textContent  = count + '개 세션';
       // 대시보드도 업데이트
       renderDashboardSessions(sessions);
@@ -244,6 +245,7 @@ function markSessionSeen(sessionId) {
   seen.add(sessionId);
   const arr = [...seen];
   localStorage.setItem(_SEEN_KEY, JSON.stringify(arr.length > 200 ? arr.slice(arr.length - 200) : arr));
+  _refreshDashBadge();
   // 실시간 세션 카드 즉시 업데이트
   const sessionCard = document.querySelector(`[data-session-id="${CSS.escape(sessionId)}"]`);
   if (sessionCard) {
@@ -277,6 +279,11 @@ function _refreshDashBadge() {
     badge.textContent = total;
     badge.style.display = total > 0 ? 'inline' : 'none';
   });
+  const liveBadge = document.getElementById('liveBadge');
+  if (liveBadge) {
+    liveBadge.textContent = liveNew;
+    liveBadge.style.display = liveNew > 0 ? 'inline' : 'none';
+  }
 }
 
 async function fetchDashboardConversations() {
