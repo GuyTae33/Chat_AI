@@ -46,7 +46,13 @@ export function setLoading(val) {
   isLoading = val;
   $inp.disabled = val;
   refreshSendBtn();
-  if (val) showTyping(); else hideTyping();
+  if (val) {
+    showTyping();
+  } else {
+    hideTyping();
+    // PC에서만 자동 포커스 (모바일은 키보드 강제팝업 방지)
+    if (window.matchMedia('(hover: hover)').matches) $inp.focus();
+  }
 }
 
 /* ── 전송 버튼 활성화 상태 갱신 (파일 첨부 or 텍스트 기준) ── */
