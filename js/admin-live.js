@@ -125,10 +125,11 @@ function startLivePolling() {
 function stopLivePolling() {
   clearInterval(livePollTimer);
   clearInterval(liveMsgPollTimer);
-  livePollTimer    = null;
-  liveMsgPollTimer = null;
-  liveSelectedId   = null;
-  liveAdminMode    = false;
+  livePollTimer        = null;
+  liveMsgPollTimer     = null;
+  liveSelectedId       = null;
+  _selectedSavedConvId = null;
+  liveAdminMode        = false;
   startBgPolling(); // 탭 이탈 후에도 알림 뱃지 유지
 }
 
@@ -161,47 +162,50 @@ async function fetchLiveSessions() {
  */
 function renderLiveSessionList(sessions) {
   _checkLiveNotifications(sessions);
-  const container = document.getElementById('liveSessionList');
-  const dot       = document.getElementById('liveDot');
-  const countEl   = document.getElementById('liveCount');
+  const container  = document.getElementById('liveSessionList');
+  const dot        = document.getElementById('liveDot');
+  const countEl    = document.getElementById('liveCount');
+  const savedConvs = (_cachedConversations || []).slice(0, 50);
+  const totalCount = sessions.length + savedConvs.length;
 
-  if (countEl) countEl.textContent = sessions.length + '개 세션';
+  if (dot) dot.style.background = sessions.length > 0 ? '#22c55e' : '#d1d5db';
+  if (countEl) countEl.textContent = sessions.length > 0
+    ? `${sessions.length}개 진행 중`
+    : `대화 ${savedConvs.length}개`;
 
-  if (sessions.length === 0) {
-    if (dot) dot.style.background = '#d1d5db';
+  if (totalCount === 0) {
     if (container) container.innerHTML = `
       <div style="text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px;">
         <div style="font-size:32px;margin-bottom:12px;">💤</div>
-        현재 진행 중인 상담이 없습니다
+        아직 대화가 없습니다
       </div>`;
+    renderDashboardSessions(sessions);
     return;
   }
 
-  if (dot) dot.style.background = '#22c55e';
-
-  // 새 세션 알림 배지 표시
+  // 라이브 탭 배지 (다른 탭에서 볼 때)
   const currentTab = document.querySelector('.tab-btn.active')?.id;
-  if (currentTab !== 'tab-live') {
+  if (currentTab !== 'tab-live' && sessions.length > 0) {
     const badge = document.getElementById('liveBadge');
     if (badge) { badge.style.display = 'inline'; badge.textContent = sessions.length; }
   }
 
-  if (!container) return;
+  if (!container) { renderDashboardSessions(sessions); return; }
   const seenNow = _getSeenSessions();
-  container.innerHTML = sessions.map(s => {
+
+  // ── 진행 중인 세션 ──
+  const liveHtml = sessions.map(s => {
     const isSelected = s.id === liveSelectedId;
     const isAdmin    = s.mode === 'admin';
     const isNew      = s.id && !seenNow.has(s.id);
     const ago        = timeSince(new Date(s.lastMessageAt));
     const msgCount   = s.messageCount ?? 0;
-
     return `
       <div data-session-id="${escAttr(s.id)}"
         onclick="markSessionSeen('${escAttr(s.id)}');selectLiveSession('${escAttr(s.id)}')"
         style="padding:12px 14px;border-radius:10px;cursor:pointer;margin-bottom:6px;
           border:2px solid ${isSelected ? '#7c3aed' : '#e5e7eb'};
-          background:${isSelected ? '#faf5ff' : '#fff'};
-          transition:all .15s;">
+          background:${isSelected ? '#faf5ff' : '#fff'};transition:all .15s;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <span style="font-size:18px;">${isAdmin ? '👩‍💼' : '🤖'}</span>
           <div style="flex:1;min-width:0;">
@@ -215,28 +219,57 @@ function renderLiveSessionList(sessions) {
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
             ${isNew && msgCount > 0 ? `<span class="new-badge" style="background:#ef4444;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;min-width:20px;text-align:center;">${msgCount}</span>` : ''}
             <span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;
-              background:${isAdmin ? '#ede9fe' : '#f3f4f6'};
-              color:${isAdmin ? '#7c3aed' : '#6b7280'};">
+              background:${isAdmin ? '#ede9fe' : '#f3f4f6'};color:${isAdmin ? '#7c3aed' : '#6b7280'};">
               ${isAdmin ? '담당자 중' : 'AI 중'}
             </span>
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;">
-          <span>💬 ${msgCount}개 메시지</span>
-          <span>${ago}</span>
+          <span>💬 ${msgCount}개 메시지</span><span>${ago}</span>
         </div>
         ${s.tokens ? `<div style="margin-top:5px;font-size:11px;color:#7c3aed;font-weight:600;">🪙 ₩${s.tokens.costKRW.toLocaleString()} · ${s.tokens.totalTokens.toLocaleString()}토큰</div>` : ''}
-      </div>
-    `;
+      </div>`;
   }).join('');
 
-  // 토큰 맵 갱신 (채팅 패널 헤더에서 참조)
+  // ── 완료된 대화 (저장된 상담) ──
+  const savedSorted = [...savedConvs].sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at));
+  const savedHtml = savedSorted.map(c => {
+    const isSelected = _selectedSavedConvId === c.id;
+    const label      = getConvLabel(c);
+    const timeStr    = c.saved_at ? timeSince(new Date(c.saved_at)) : '';
+    const sub        = [c.region, c.layout, `💬 ${c.message_count || 0}개`].filter(Boolean).join(' · ');
+    const isNew      = !seenNow.has(c.id);
+    return `
+      <div data-conv-id="${escAttr(c.id)}"
+        onclick="selectSavedConvInPanel('${escAttr(c.id)}')"
+        style="padding:12px 14px;border-radius:10px;cursor:pointer;margin-bottom:6px;
+          border:2px solid ${isSelected ? '#f59e0b' : '#e5e7eb'};
+          background:${isSelected ? '#fffbeb' : '#fff'};transition:all .15s;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:18px;">📁</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:${isNew ? '700' : '600'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;">
+              ${escAdmin(label)}
+              ${isNew ? '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#ef4444;color:#fff;font-weight:700;">NEW</span>' : ''}
+            </div>
+          </div>
+          <span style="font-size:11px;color:#9ca3af;flex-shrink:0;white-space:nowrap;">${timeStr}</span>
+        </div>
+        <div style="font-size:11px;color:#9ca3af;padding-left:26px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escAdmin(sub)}</div>
+      </div>`;
+  }).join('');
+
+  const separator = sessions.length > 0 && savedSorted.length > 0
+    ? `<div style="font-size:11px;color:#d1d5db;text-align:center;padding:6px 4px;margin:4px 0;">── 완료된 대화 ──</div>`
+    : '';
+
+  container.innerHTML = liveHtml + separator + savedHtml;
+
+  // 토큰 맵 갱신
   for (const s of sessions) {
-    if (s.tokens) window._liveTokenMap = window._liveTokenMap || {};
-    if (s.tokens) window._liveTokenMap[s.id] = s.tokens;
+    if (s.tokens) { window._liveTokenMap = window._liveTokenMap || {}; window._liveTokenMap[s.id] = s.tokens; }
   }
 
-  // 대시보드 세션 목록도 같이 업데이트
   renderDashboardSessions(sessions);
 }
 
@@ -300,8 +333,9 @@ function _formatSizeRaw(raw) {
 }
 
 /* ── 저장된 상담 캐시 ── */
-let _cachedConversations = [];
-let _cachedLiveSessions  = [];
+let _cachedConversations  = [];
+let _cachedLiveSessions   = [];
+let _selectedSavedConvId  = null; // 완료 대화 선택 추적
 
 function _refreshDashBadge() {
   const seen    = _getSeenSessions();
@@ -685,8 +719,84 @@ async function selectLiveSession(sessionId) {
 window.liveGoBack = function() {
   document.querySelector('.live-split')?.classList.remove('session-selected');
   clearInterval(liveMsgPollTimer);
-  liveMsgPollTimer = null;
-  liveSelectedId = null;
+  liveMsgPollTimer     = null;
+  liveSelectedId       = null;
+  _selectedSavedConvId = null;
+};
+
+/**
+ * 완료된 대화 선택 — 오른쪽 패널에 저장된 메시지 표시
+ */
+window.selectSavedConvInPanel = function(convId) {
+  clearInterval(liveMsgPollTimer);
+  liveMsgPollTimer     = null;
+  liveSelectedId       = null;
+  _selectedSavedConvId = convId;
+
+  markSessionSeen(convId);
+
+  const conv = _cachedConversations.find(c => c.id === convId);
+  if (!conv) return;
+
+  const label   = getConvLabel(conv);
+  const timeStr = conv.saved_at
+    ? new Date(conv.saved_at).toLocaleString('ko-KR', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+    : '-';
+
+  // 패널 헤더 세팅
+  document.getElementById('livePanelTitle').textContent = `📁 ${label}`;
+  document.getElementById('livePanelMeta').textContent  =
+    `${timeStr} · 메시지 ${conv.message_count || 0}개${conv.region ? ' · ' + conv.region : ''}`;
+  document.getElementById('livePanelActions').innerHTML = `
+    <button onclick="openHistoryDetail('${escAttr(convId)}')"
+      style="padding:5px 12px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">
+      📋 상세보기
+    </button>`;
+
+  // 라이브 전용 UI 숨기기
+  const replyBar = document.getElementById('adminReplyBar');
+  if (replyBar) replyBar.style.display = 'none';
+  const adminInputArea = document.getElementById('adminInputArea');
+  if (adminInputArea) adminInputArea.style.display = 'none';
+
+  // 메시지 렌더링 — renderLiveChatPanel 재사용
+  const messages    = Array.isArray(conv.messages) ? conv.messages : [];
+  const fakeSession = { id: conv.id, customerName: label, messages, mode: 'ai', tokens: null };
+  renderLiveChatPanel(fakeSession);
+
+  // renderLiveChatPanel이 덮어쓴 헤더/액션 다시 적용
+  document.getElementById('livePanelTitle').textContent = `📁 ${label}`;
+  document.getElementById('livePanelMeta').textContent  =
+    `${timeStr} · 메시지 ${conv.message_count || 0}개${conv.region ? ' · ' + conv.region : ''}`;
+  document.getElementById('livePanelActions').innerHTML = `
+    <button onclick="openHistoryDetail('${escAttr(convId)}')"
+      style="padding:5px 12px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;">
+      📋 상세보기
+    </button>`;
+  if (replyBar) replyBar.style.display = 'none';
+  if (adminInputArea) adminInputArea.style.display = 'none';
+
+  // 완료 배너 (메시지 맨 위 삽입)
+  const msgs = document.getElementById('liveMsgs');
+  if (msgs) {
+    msgs.insertAdjacentHTML('afterbegin',
+      `<div style="text-align:center;margin-bottom:12px;">
+        <span style="font-size:11px;color:#9ca3af;background:#f3f4f6;padding:4px 14px;border-radius:10px;">
+          완료된 대화 · ${timeStr}
+        </span>
+      </div>`
+    );
+    requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
+  }
+
+  // 목록 선택 하이라이트 갱신
+  renderLiveSessionList(_cachedLiveSessions);
+
+  // 모바일: 채팅 패널 전환
+  if (window.innerWidth < 768) {
+    document.querySelector('.live-split')?.classList.add('session-selected');
+    setTimeout(() => { if (msgs) msgs.scrollTop = msgs.scrollHeight; }, 50);
+  }
 };
 
 /**

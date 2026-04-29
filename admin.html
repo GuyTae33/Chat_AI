@@ -35,7 +35,7 @@
       <span class="new-badge" id="newBadge" style="display:none"></span>
     </div>
     <div class="nav-item" onclick="switchTab('live')">
-      <span class="nav-icon">📡</span> 라이브 상담
+      <span class="nav-icon">💬</span> 대화
       <span class="new-badge" id="liveBadge" style="display:none">0</span>
     </div>
     <div class="nav-item" onclick="window.open('chat.html', '_blank')">
@@ -105,7 +105,7 @@
     <button class="tab-btn active" id="tab-dashboard" onclick="switchTab('dashboard')">📊 대시보드 <span id="dashNewBadge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;vertical-align:middle;margin-left:2px;"></span></button>
     <button class="tab-btn" id="tab-stat-detail" style="display:none;"></button>
     <button class="tab-btn" id="tab-quotes" onclick="switchTab('quotes')">📋 견적 목록 <span class="new-badge" id="quoteTabBadge" style="display:none;vertical-align:middle;"></span></button>
-    <button class="tab-btn" id="tab-live" onclick="switchTab('live')">📡 라이브 상담</button>
+    <button class="tab-btn" id="tab-live" onclick="switchTab('live')">💬 대화</button>
     <button class="tab-btn" id="tab-tokens" onclick="switchTab('tokens')">🪙 토큰 사용량</button>
   </div>
 
@@ -233,9 +233,9 @@
       <!-- 왼쪽: 활성 세션 목록 -->
       <div class="live-sessions-col" style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;display:flex;flex-direction:column;overflow:hidden;">
         <div style="padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:15px;font-weight:700;">📡 진행 중인 상담</div>
+          <div style="font-size:15px;font-weight:700;">💬 모든 대화</div>
           <div style="display:flex;align-items:center;gap:8px;">
-            <span id="liveCount" style="font-size:12px;color:#6b7280;">0개 세션</span>
+            <span id="liveCount" style="font-size:12px;color:#6b7280;">대화 0개</span>
             <div id="liveDot" style="width:8px;height:8px;border-radius:50%;background:#d1d5db;"></div>
           </div>
         </div>
