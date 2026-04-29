@@ -327,6 +327,11 @@ async function _loadSeenCounts() {
       localStorage.removeItem(oldKey);
       localStorage.removeItem('lumane_seen_counts');
     }
+    // 카운트 로드 완료 후 캐시된 데이터로 대시보드 재렌더링
+    if (_cachedLiveSessions.length > 0 || _cachedConversations.length > 0) {
+      renderDashboardSessions(_cachedLiveSessions, _cachedConversations);
+    }
+    _refreshDashBadge();
   } catch {}
 }
 function _saveSeenCount(sessionId, count) {
