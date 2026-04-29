@@ -332,7 +332,12 @@ let _selectedSavedConvId  = null; // 완료 대화 선택 추적
 
 function _refreshDashBadge() {
   const seen    = _getSeenSessions();
-  const liveNew = _cachedLiveSessions.filter(s => s.id && (!seen.has(s.id) || _resetSessions.has(s.id))).length;
+  const liveNew = _cachedLiveSessions.filter(s => {
+    if (!s.id) return false;
+    if (!seen.has(s.id) || _resetSessions.has(s.id)) return true;
+    const lastSeen = _seenMsgCounts[s.id];
+    return lastSeen !== undefined && (s.messageCount ?? 0) > lastSeen;
+  }).length;
   const convNew = _cachedConversations.filter(c => c.id && !seen.has(c.id)).length;
   const total   = liveNew + convNew;
   [document.getElementById('dashNewBadge'), document.getElementById('sidebarDashBadge')].forEach(badge => {
