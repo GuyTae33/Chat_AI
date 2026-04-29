@@ -634,7 +634,7 @@ function renderDashboardSessions(sessions) {
 
           <!-- 헤더 -->
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:${infoRows.length>0||optItems.length>0?'10px':'0'};">
-            <div style="flex-shrink:0;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#fbbf24);display:flex;align-items:center;justify-content:center;font-size:18px;">📁</div>
+            <div style="flex-shrink:0;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6b7280,#9ca3af);display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
                 <span style="font-size:15px;font-weight:${isNew?'700':'600'};color:#111827;">${escAdmin(getConvLabel(c))}</span>
