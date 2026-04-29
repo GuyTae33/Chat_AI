@@ -219,29 +219,49 @@ function parseOrderSheet(text) {
   const get = (re) => { const m = text.match(re); return m ? m[1].trim() : null; };
   const priceNum = (s) => s ? parseInt(s.replace(/,/g, '')) : null;
 
+  // 치수: 좌측/정면/우측 형식 또는 내용 필드
   const sizeM = text.match(/좌측[:\s]+([^\n/]+)\/\s*정면[:\s]+([^\n/]+)\/\s*우측[:\s]+([^\n]+)/);
-  const size_raw = sizeM ? `좌측 ${sizeM[1].trim()} 정면 ${sizeM[2].trim()} 우측 ${sizeM[3].trim()}` : null;
+  const size_raw = sizeM
+    ? `좌측 ${sizeM[1].trim()} 정면 ${sizeM[2].trim()} 우측 ${sizeM[3].trim()}`
+    : get(/내용[:\s]+([^\n]+)/);
 
+  // 옵션: 주문서 형식 또는 견적서 추가옵션 항목
   const optM = text.match(/구성 옵션[*\s\S]*?\n([\s\S]*?)(?:\*\*총 합계|총 합계)/);
-  const options_text = optM ? optM[1].trim().replace(/\n/g, ' / ') : null;
+  let options_text = optM ? optM[1].trim().replace(/\n/g, ' / ') : null;
+  if (!options_text) {
+    const optLines = text.match(/추가\s*옵션\s*\n((?:\s*[-•]\s*.+\n?)+)/);
+    if (optLines) options_text = optLines[1].trim().replace(/\n/g, ' / ');
+  }
+
+  // 색상: 개별 필드 또는 견적서 합성 형식 "색상: 선반 X / 프레임 Y"
+  let shelf_color = get(/선반\s*색상[:\s]+([^\n|/]+)/);
+  let frame_color = get(/프레임\s*색상[:\s]+([^\n|/]+)/);
+  if (!shelf_color) {
+    const m = text.match(/색상[:\s]+선반\s+([^\s/\n|]+)/);
+    if (m) shelf_color = m[1].trim();
+  }
+  if (!frame_color) {
+    const m = text.match(/(?:색상[:\s]+(?:선반\s+[^\s/]+\s*\/\s*)?|\/\s*)프레임\s+([^\n|/,]+)/);
+    if (m) frame_color = m[1].trim();
+  }
 
   return {
-    customer_name: get(/성함[:\s]+([^\n]+)/),
-    phone:         get(/연락처[:\s]+([^\n]+)/),
-    region:        get(/주소[:\s]+([^\n]+)/),
-    layout:        get(/설치 형태[:\s]+([^\n]+)/),
-    frame_color:   get(/프레임 색상[:\s]+([^\n]+)/),
-    shelf_color:   get(/선반 색상[:\s]+([^\n]+)/),
+    customer_name:   get(/고객명[:\s]+([^|\n]+)/) || get(/성함[:\s]+([^\n]+)/),
+    phone:           get(/전화[:\s]+([^|\n]+)/)   || get(/연락처[:\s]+([^\n]+)/),
+    region:          get(/주소[:\s]+([^|\n]+)/),
+    layout:          get(/설치\s*형태[:\s]+([^\n]+)/),
+    frame_color:     frame_color || null,
+    shelf_color:     shelf_color || null,
     size_raw,
     options_text,
-    estimated_price: priceNum(get(/총 합계[:\s*]*([0-9,]+)원/)),
+    estimated_price: priceNum(get(/총\s*합계[:\s*]*([0-9,]+)원/)) || priceNum(get(/견적[:\s]+([0-9,]+)원/)),
   };
 }
 
 // ── AI 견적 자동 등록 (주문서 출력 시 견적접수 테이블에 저장) ──
 async function autoRegisterQuote(sess, reply) {
   if (sess.isTest) return; // 테스트 세션은 견적 자동 등록 제외
-  if (!reply.includes('총 합계')) return;
+  if (!reply.includes('총 합계') && !reply.includes('견적서') && !reply.includes('주문내역')) return;
   const parsed = parseOrderSheet(reply);
   if (!parsed.estimated_price) return;
 
@@ -285,7 +305,8 @@ async function upsertConversation(sess) {
   if (userMsgCount === 0) return;
   try {
     const orderMsg = [...sess.messages].reverse().find(m =>
-      m.role === 'assistant' && m.content && m.content.includes('주문서')
+      m.role === 'assistant' && m.content &&
+      (m.content.includes('주문서') || m.content.includes('견적서') || m.content.includes('주문내역'))
     );
     const parsed = orderMsg ? parseOrderSheet(orderMsg.content) : {};
     const estimatedPrice = parsed.estimated_price || null;
@@ -342,7 +363,8 @@ async function saveConversation(sess, reason) {
       `${m.role === 'user' ? '고객' : '루마네'}: ${(m.content || '').replace(/"/g, "'").replace(/\\/g, '').replace(/[\r\n\t]/g, ' ')}`
     ).join(' | ');
     const orderMsg = [...sess.messages].reverse().find(m =>
-      m.role === 'assistant' && m.content && m.content.includes('주문서')
+      m.role === 'assistant' && m.content &&
+      (m.content.includes('주문서') || m.content.includes('견적서') || m.content.includes('주문내역'))
     );
     const parsed = orderMsg ? parseOrderSheet(orderMsg.content) : {};
     fetch(MAKE_WEBHOOK, {
