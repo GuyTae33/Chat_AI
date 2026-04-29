@@ -773,18 +773,8 @@ window.selectSavedConvInPanel = function(convId) {
   if (replyBar) replyBar.style.display = 'none';
   if (adminInputArea) adminInputArea.style.display = 'none';
 
-  // 완료 배너 (메시지 맨 위 삽입)
   const msgs = document.getElementById('liveMsgs');
-  if (msgs) {
-    msgs.insertAdjacentHTML('afterbegin',
-      `<div style="text-align:center;margin-bottom:12px;">
-        <span style="font-size:11px;color:#9ca3af;background:#f3f4f6;padding:4px 14px;border-radius:10px;">
-          완료된 대화 · ${timeStr}
-        </span>
-      </div>`
-    );
-    requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
-  }
+  if (msgs) requestAnimationFrame(() => { msgs.scrollTop = msgs.scrollHeight; });
 
   // 목록 선택 하이라이트 갱신
   renderLiveSessionList(_cachedLiveSessions);
