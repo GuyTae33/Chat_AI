@@ -204,6 +204,7 @@ function renderLiveSessionList(sessions) {
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;">
               ${escAdmin(s.customerName)}
+              ${isNew ? '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#ef4444;color:#fff;font-weight:700;">NEW</span>' : ''}
               ${s.isTest ? '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:700;">테스트</span>' : ''}
             </div>
             <div style="font-size:11px;color:#9ca3af;font-family:monospace">${escAdmin(s.id.slice(0,18))}…</div>
@@ -1149,6 +1150,11 @@ async function saveConversationManual() {
       try { const d = await res.json(); detail = d.error || ''; } catch(_) {}
       throw new Error(detail || res.status);
     }
+    // 저장 성공 시 seen에서 제거 → 대시보드·저장된 상담에서 미확인(빨간 테두리)으로 표시
+    const seen = _getSeenSessions();
+    seen.delete(liveSelectedId);
+    localStorage.setItem(_SEEN_KEY, JSON.stringify([...seen]));
+    _refreshDashBadge();
     showToast('💾 대화가 저장되었습니다.', 'success');
   } catch (err) {
     showToast(`❌ 저장 실패: ${err.message}`, 'error');
