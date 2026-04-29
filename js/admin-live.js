@@ -312,8 +312,9 @@ function _getSeenSessions() {
 async function _loadSeenCounts() {
   try {
     const res = await fetch('/api/admin/seen-counts');
-    if (!res.ok) return;
+    if (!res.ok) { console.error('[seen] load failed', res.status, await res.text()); return; }
     const { counts } = await res.json();
+    console.log('[seen] loaded from server:', counts);
     Object.assign(_seenMsgCounts, counts);
     // 기존 localStorage 마이그레이션 (1회)
     const oldKey = 'lumane_seen_sessions';
@@ -343,7 +344,7 @@ function _saveSeenCount(sessionId, count) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: id, count })
-  }).catch(() => {});
+  }).then(r => r.json()).then(d => console.log('[seen] save result:', id, d)).catch(e => console.error('[seen] save error:', e));
 }
 /* ── 서버 재시작 등으로 세션이 리셋된 경우 추적 ── */
 const _resetSessions = new Set();
