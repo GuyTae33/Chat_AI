@@ -78,7 +78,15 @@ async function openStatDetail(period, label) {
     if (myId !== _statRequestId) return;
     _statSessions = data.sessions || [];
     document.getElementById('statDetailCount').textContent = `총 ${_statSessions.length}건`;
-    body.innerHTML = renderStatDaySummary(_statSessions);
+    if (period === 'today') {
+      showStatDay(toKSTDate(new Date().toISOString()));
+      /* 오늘 상담은 날짜 목록 단계 없이 바로 목록이므로 뒤로 = 대시보드 */
+      const backBtn = document.getElementById('statDetailBack');
+      backBtn.textContent = '‹ 뒤로';
+      backBtn.onclick = () => switchTab('dashboard');
+    } else {
+      body.innerHTML = renderStatDaySummary(_statSessions);
+    }
   } catch {
     if (myId !== _statRequestId) return;
     body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;">불러오기 실패</div>';
