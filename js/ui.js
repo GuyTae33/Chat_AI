@@ -388,8 +388,10 @@ async function renderQuoteImage(text) {
       html += `<div style="background:#c0392b;color:#fff;text-align:center;padding:11px 12px;font-size:15px;font-weight:900;">${esc(t)}</div>`;
     } else if (t === '---') {
       html += '<hr style="margin:2px 0;border:none;border-top:1px solid #e5e5e5;">';
-    } else if (/주문내역|평면도/.test(t)) {
+    } else if (/주문내역/.test(t)) {
       html += `<div style="background:#c0392b;color:#fff;padding:5px 12px;font-weight:bold;font-size:12px;">${esc(t)}</div>`;
+    } else if (/평면도|현장 확인 후 작성/.test(t)) {
+      // 평면도 없으면 표시 안 함
     } else if (/^\(주\)루마네/.test(t)) {
       // 푸터 줄 제외
     } else {
