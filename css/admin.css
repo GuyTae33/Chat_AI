@@ -851,8 +851,8 @@ body {
   /* 섹션 패딩 최소화 */
   .section { padding: 8px; }
 
-  /* 통계 카드: 2열 */
-  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+  /* 통계 카드: 3열 */
+  .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
   .stats-card { padding: 12px 14px; }
   .stats-label { font-size: 10px; white-space: nowrap; margin-bottom: 5px; }
   .stats-value { font-size: 22px; margin-bottom: 4px; }
@@ -981,7 +981,7 @@ body {
 ============================================= */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
   margin-bottom: 24px;
 }
@@ -1018,6 +1018,20 @@ body {
   color: #6b7280;
 }
 .stats-card--total .stats-sub { color: #9ca3af; }
+.stats-card--unread {
+  background: #fff7ed;
+  border-color: #fb923c;
+}
+.stats-card--unread .stats-label { color: #ea580c; }
+.stats-card--unread .stats-value { color: #c2410c; }
+.stats-card--unread .stats-sub { color: #ea580c; }
+.stats-card--unread.no-unread {
+  background: #fff;
+  border-color: #e5e7eb;
+}
+.stats-card--unread.no-unread .stats-label { color: #9ca3af; }
+.stats-card--unread.no-unread .stats-value { color: #1a1a2e; }
+.stats-card--unread.no-unread .stats-sub { color: #6b7280; }
 
 .stats-card--clickable {
   cursor: pointer;

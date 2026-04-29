@@ -10,6 +10,10 @@ async function checkHistoryCount() {
   if (document.querySelector('.tab-btn.active')?.id === 'tab-history') {
     localStorage.setItem('lastSeenHistoryAt', new Date().toISOString());
     updateHistoryBadge(0);
+    const el = document.getElementById('statUnread');
+    const card = el?.closest('.stats-card--unread');
+    if (el) el.textContent = 0;
+    if (card) card.classList.add('no-unread');
     return;
   }
   try {
@@ -27,7 +31,16 @@ async function checkHistoryCount() {
     const seenDate = new Date(lastSeenAt);
     const unread = conversations.filter(c => c.saved_at && new Date(c.saved_at) > seenDate).length;
     if (typeof updateHistoryBadge === 'function') updateHistoryBadge(unread);
+    const el = document.getElementById('statUnread');
+    const card = el?.closest('.stats-card--unread');
+    if (el) el.textContent = unread;
+    if (card) card.classList.toggle('no-unread', unread === 0);
   } catch { /* 무시 */ }
+}
+
+function goToUnreadHistory() {
+  const btn = document.getElementById('tab-history');
+  if (btn) btn.click();
 }
 
 /**
@@ -210,35 +223,86 @@ function renderLiveSessionList(sessions) {
 /**
  * 대시보드 탭 — 현재 진행 중인 채팅방 목록
  */
+/* ── 확인된 세션 ID 추적 (localStorage) ── */
+const _SEEN_KEY = 'lumane_seen_sessions';
+function _getSeenSessions() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(_SEEN_KEY) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch { return new Set(); }
+}
+function markSessionSeen(sessionId) {
+  if (!sessionId) return;
+  const seen = _getSeenSessions();
+  seen.add(sessionId);
+  const arr = [...seen];
+  localStorage.setItem(_SEEN_KEY, JSON.stringify(arr.length > 200 ? arr.slice(arr.length - 200) : arr));
+  // 클릭 즉시 카드 시각 업데이트
+  const card = document.querySelector(`[data-session-id="${CSS.escape(sessionId)}"]`);
+  if (card) {
+    card.style.borderColor = '#3b82f6';
+    const newBadge = card.querySelector('.new-badge');
+    if (newBadge) newBadge.remove();
+    const enterBtn = card.querySelector('.enter-btn');
+    if (enterBtn) enterBtn.style.color = '#3b82f6';
+  }
+}
+window.markSessionSeen = markSessionSeen;
+
 function renderDashboardSessions(sessions) {
   const container = document.getElementById('dashboardSessionList');
   if (!container) return;
+
+  // 이벤트 위임 — 최초 1회만 등록
+  if (!container._clickInited) {
+    container._clickInited = true;
+    container.addEventListener('click', e => {
+      const card = e.target.closest('[data-session-id]');
+      if (!card) return;
+      const sessionId = card.dataset.sessionId;
+      markSessionSeen(sessionId);
+      switchTab('live');
+      setTimeout(() => selectLiveSession(sessionId), 100);
+    });
+    container.addEventListener('mouseenter', e => {
+      const card = e.target.closest('[data-session-id]');
+      if (card) card.style.boxShadow = '0 4px 16px rgba(0,0,0,.1)';
+    }, true);
+    container.addEventListener('mouseleave', e => {
+      const card = e.target.closest('[data-session-id]');
+      if (card) card.style.boxShadow = 'none';
+    }, true);
+  }
 
   if (sessions.length === 0) {
     container.innerHTML = `
       <div style="text-align:center;padding:60px 16px;color:#9ca3af;">
         <div style="font-size:48px;margin-bottom:16px;">💤</div>
-        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">현재 진행 중인 상담이 없습니다</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">들어온 상담이 없습니다</div>
         <div style="font-size:13px;">고객이 채팅을 시작하면 여기에 표시됩니다</div>
       </div>`;
     return;
   }
 
+  const seenSessions = _getSeenSessions();
+
   container.innerHTML = sessions.map(s => {
-    const isAdmin = s.mode === 'admin';
-    const ago     = timeSince(new Date(s.lastMessageAt));
+    if (!s.id) return '';
+    const isAdmin     = s.mode === 'admin';
+    const ago         = timeSince(new Date(s.lastMessageAt));
+    const isNew       = !seenSessions.has(s.id);
+    const borderColor = isNew ? '#ef4444' : '#3b82f6';
     return `
-      <div onclick="switchTab('live');setTimeout(()=>selectLiveSession('${escAttr(s.id)}'),100)"
-        style="background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px 18px;
-               cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px;"
-        onmouseenter="this.style.borderColor='#7c3aed';this.style.boxShadow='0 2px 12px rgba(124,58,237,.1)'"
-        onmouseleave="this.style.borderColor='#e5e7eb';this.style.boxShadow='none'">
+      <div data-session-id="${escAttr(s.id)}"
+        style="background:#fff;border:2px solid ${borderColor};border-radius:14px;padding:16px 18px;
+               cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px;">
         <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,${isAdmin?'#7c3aed,#a855f7':'#6b7280,#9ca3af'});display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">
           ${isAdmin ? '👩‍💼' : '🤖'}
         </div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:15px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:5px;">
             ${escAdmin(s.customerName)}
+            ${isNew ? '<span class="new-badge" style="font-size:10px;padding:2px 7px;border-radius:8px;background:#ef4444;color:#fff;font-weight:700;letter-spacing:.03em;">NEW</span>' : ''}
             ${s.isTest ? '<span style="font-size:10px;padding:1px 6px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:700;">테스트</span>' : ''}
           </div>
           <div style="font-size:12px;color:#6b7280;">💬 ${s.messageCount}개 메시지 · ${ago}</div>
@@ -250,7 +314,7 @@ function renderDashboardSessions(sessions) {
             color:${isAdmin ? '#7c3aed' : '#6b7280'};">
             ${isAdmin ? '담당자 상담 중' : 'AI 상담 중'}
           </span>
-          <span style="font-size:13px;color:#9ca3af;">→ 입장</span>
+          <span class="enter-btn" style="font-size:13px;color:${isNew ? '#ef4444' : '#3b82f6'};font-weight:600;">→ 입장</span>
         </div>
       </div>
     `;
