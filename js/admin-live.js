@@ -275,7 +275,7 @@ function renderLiveSessionList(sessions) {
 const _adminSettings = {};
 async function loadAdminSettings() {
   try {
-    const res = await fetch('/api/admin/settings');
+    const res = await fetch('/api/admin/settings', { headers: adminHeaders() });
     if (!res.ok) return;
     const { settings } = await res.json();
     Object.assign(_adminSettings, settings);
@@ -295,7 +295,7 @@ function saveAdminSetting(key, value) {
   _adminSettings[key] = value;
   fetch('/api/admin/settings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: adminHeaders(),
     body: JSON.stringify({ key, value })
   }).catch(() => {});
 }
@@ -311,10 +311,9 @@ function _getSeenSessions() {
 }
 async function _loadSeenCounts() {
   try {
-    const res = await fetch('/api/admin/seen-counts');
-    if (!res.ok) { console.error('[seen] load failed', res.status, await res.text()); return; }
+    const res = await fetch('/api/admin/seen-counts', { headers: adminHeaders() });
+    if (!res.ok) return;
     const { counts } = await res.json();
-    console.log('[seen] loaded from server:', counts);
     Object.assign(_seenMsgCounts, counts);
     // 기존 localStorage 마이그레이션 (1회)
     const oldKey = 'lumane_seen_sessions';
@@ -342,9 +341,9 @@ function _saveSeenCount(sessionId, count) {
   _seenMsgCounts[id] = count;
   fetch('/api/admin/seen-counts', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: adminHeaders(),
     body: JSON.stringify({ session_id: id, count })
-  }).then(r => r.json()).then(d => console.log('[seen] save result:', id, d)).catch(e => console.error('[seen] save error:', e));
+  }).catch(() => {});
 }
 /* ── 서버 재시작 등으로 세션이 리셋된 경우 추적 ── */
 const _resetSessions = new Set();
