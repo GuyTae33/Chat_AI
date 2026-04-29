@@ -1398,6 +1398,34 @@ app.post('/api/admin/save-conversation', async (req, res) => {
   }
 });
 
+// ── 어드민: 공유 설정 조회 ───────────────────────────────────
+app.get('/api/admin/settings', async (_req, res) => {
+  try {
+    const { data, error } = await supabase.from('admin_settings').select('key, value');
+    if (error) throw error;
+    const settings = {};
+    (data || []).forEach(r => { settings[r.key] = r.value; });
+    res.json({ settings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 어드민: 공유 설정 저장 (upsert) ─────────────────────────
+app.post('/api/admin/settings', async (req, res) => {
+  const { key, value } = req.body;
+  if (!key || value === undefined) return res.status(400).json({ error: 'key, value 필요' });
+  try {
+    const { error } = await supabase
+      .from('admin_settings')
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── 어드민: 읽음 카운트 조회 ──────────────────────────────────
 app.get('/api/admin/seen-counts', async (_req, res) => {
   try {

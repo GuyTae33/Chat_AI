@@ -23,10 +23,10 @@ async function checkHistoryCount() {
     if (document.querySelector('.tab-btn.active')?.id === 'tab-dashboard') return;
     const data = await res.json();
     const conversations = data.conversations || [];
-    let lastSeenAt = localStorage.getItem('lastSeenHistoryAt');
+    let lastSeenAt = getAdminSetting('lastSeenHistoryAt');
     if (!lastSeenAt) {
       lastSeenAt = new Date().toISOString();
-      localStorage.setItem('lastSeenHistoryAt', lastSeenAt);
+      saveAdminSetting('lastSeenHistoryAt', lastSeenAt);
     }
     const seenDate = new Date(lastSeenAt);
     const unread = conversations.filter(c => c.saved_at && new Date(c.saved_at) > seenDate).length;
@@ -53,6 +53,7 @@ function goToUnreadHistory() {
 function startBgPolling() {
   if (bgPollTimer) return;
   _loadSeenCounts();
+  loadAdminSettings();
   // 저장된 상담 미확인 카운트 — 60초마다 독립 실행
   if (!historyBgPollTimer) {
     checkHistoryCount();
@@ -270,7 +271,38 @@ function renderLiveSessionList(sessions) {
 /**
  * 대시보드 탭 — 현재 진행 중인 채팅방 목록
  */
-/* ── 확인된 세션 ID 추적 (localStorage) ── */
+/* ── 어드민 공유 설정 (서버 저장) ── */
+const _adminSettings = {};
+async function loadAdminSettings() {
+  try {
+    const res = await fetch('/api/admin/settings');
+    if (!res.ok) return;
+    const { settings } = await res.json();
+    Object.assign(_adminSettings, settings);
+    // 기존 localStorage 마이그레이션 (1회)
+    const migrate = { lastSeenHistoryAt: true, lastSeenQuotesAt: true, lumane_admin_templates: true };
+    for (const key of Object.keys(migrate)) {
+      const val = localStorage.getItem(key);
+      if (val && _adminSettings[key] === undefined) {
+        const parsed = key === 'lumane_admin_templates' ? JSON.parse(val) : val;
+        saveAdminSetting(key, parsed);
+      }
+      localStorage.removeItem(key);
+    }
+  } catch {}
+}
+function saveAdminSetting(key, value) {
+  _adminSettings[key] = value;
+  fetch('/api/admin/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, value })
+  }).catch(() => {});
+}
+function getAdminSetting(key) { return _adminSettings[key]; }
+window.saveAdminSetting = saveAdminSetting;
+window.getAdminSetting  = getAdminSetting;
+
 /* ── 세션별 마지막으로 읽은 메시지 수 추적 (서버 저장) ── */
 const _seenMsgCounts = {};
 function _getSeenSessions() {
@@ -1836,16 +1868,15 @@ function initAdminCtxMenuListener() {
 }
 
 /* ================================================================
-   빠른 답변 템플릿 (localStorage 기반)
+   빠른 답변 템플릿 (서버 저장)
 ================================================================ */
-const TEMPLATE_KEY = 'lumane_admin_templates';
-
 function loadTemplates() {
-  try { return JSON.parse(localStorage.getItem(TEMPLATE_KEY) || '[]'); } catch { return []; }
+  const t = getAdminSetting('lumane_admin_templates');
+  return Array.isArray(t) ? t : [];
 }
 
 function saveTemplatesToStorage(list) {
-  localStorage.setItem(TEMPLATE_KEY, JSON.stringify(list));
+  saveAdminSetting('lumane_admin_templates', list);
 }
 
 function renderTemplateList() {

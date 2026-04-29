@@ -330,12 +330,12 @@ async function loadQuotes() {
     // 미확인 견적 배지 — 견적 탭이 열려 있으면 자동 확인
     const onQuotesTab = document.querySelector('.tab-btn.active')?.id === 'tab-quotes';
     if (onQuotesTab) {
-      localStorage.setItem('lastSeenQuotesAt', new Date().toISOString());
+      window.saveAdminSetting?.('lastSeenQuotesAt', new Date().toISOString());
       updateQuoteBadge(0);
     } else {
-      const lastSeenQuotesAt = localStorage.getItem('lastSeenQuotesAt');
+      const lastSeenQuotesAt = window.getAdminSetting?.('lastSeenQuotesAt');
       if (!lastSeenQuotesAt) {
-        localStorage.setItem('lastSeenQuotesAt', new Date().toISOString());
+        window.saveAdminSetting?.('lastSeenQuotesAt', new Date().toISOString());
         updateQuoteBadge(0);
       } else {
         const seenDate = new Date(lastSeenQuotesAt);
@@ -667,14 +667,14 @@ function switchTab(tab) {
   if (tab === 'dashboard') {
     navItems[0].classList.add('active');
     document.getElementById('topbarTitle').textContent = '📊 대시보드';
-    localStorage.setItem('lastSeenHistoryAt', new Date().toISOString());
+    window.saveAdminSetting?.('lastSeenHistoryAt', new Date().toISOString());
     if (typeof updateHistoryBadge === 'function') updateHistoryBadge(0);
     // 대시보드 진입 시 즉시 세션 목록 로드
     fetchLiveSessions();
   } else if (tab === 'quotes') {
     navItems[1].classList.add('active');
     document.getElementById('topbarTitle').textContent = '📋 견적 목록';
-    localStorage.setItem('lastSeenQuotesAt', new Date().toISOString());
+    window.saveAdminSetting?.('lastSeenQuotesAt', new Date().toISOString());
     updateQuoteBadge(0);
   } else if (tab === 'live') {
     navItems[2].classList.add('active');
@@ -691,7 +691,7 @@ function switchTab(tab) {
     const loadStartedAt = new Date().toISOString();
     loadHistory().then(() => {
       if (document.querySelector('.tab-btn.active')?.id === 'tab-history') {
-        localStorage.setItem('lastSeenHistoryAt', loadStartedAt);
+        window.saveAdminSetting?.('lastSeenHistoryAt', loadStartedAt);
       }
     });
   }
