@@ -265,6 +265,20 @@ window.markSessionSeen = markSessionSeen;
 
 /* ── 저장된 상담 캐시 ── */
 let _cachedConversations = [];
+let _cachedLiveSessions  = [];
+
+function _refreshDashBadge() {
+  const seen    = _getSeenSessions();
+  const liveNew = _cachedLiveSessions.filter(s => s.id && !seen.has(s.id)).length;
+  const convNew = _cachedConversations.filter(c => c.id && !seen.has(c.id)).length;
+  const total   = liveNew + convNew;
+  const badge   = document.getElementById('dashNewBadge');
+  if (badge) {
+    badge.textContent = total;
+    badge.style.display = total > 0 ? 'inline' : 'none';
+  }
+}
+
 async function fetchDashboardConversations() {
   if (!serverOnline) return;
   try {
@@ -272,6 +286,7 @@ async function fetchDashboardConversations() {
     if (!res.ok) return;
     const data = await res.json();
     _cachedConversations = (data.conversations || []).slice(0, 30);
+    _refreshDashBadge();
   } catch { /* 무시 */ }
 }
 
@@ -306,17 +321,10 @@ function renderDashboardSessions(sessions) {
     }, true);
   }
 
+  _cachedLiveSessions = sessions;
+  _refreshDashBadge();
+
   const seenSessions = _getSeenSessions();
-
-  const liveNew = sessions.filter(s => s.id && !seenSessions.has(s.id)).length;
-  const convNew  = _cachedConversations.filter(c => c.id && !seenSessions.has(c.id)).length;
-  const totalNew = liveNew + convNew;
-
-  const dashBadge = document.getElementById('dashNewBadge');
-  if (dashBadge) {
-    dashBadge.textContent = totalNew;
-    dashBadge.style.display = totalNew > 0 ? 'inline' : 'none';
-  }
 
   if (sessions.length === 0 && _cachedConversations.length === 0) {
     container.innerHTML = `
@@ -328,14 +336,19 @@ function renderDashboardSessions(sessions) {
     return;
   }
 
-  // ── 실시간 상담 섹션 ──
+  // ── 실시간 상담 섹션 (미확인 우선 정렬) ──
+  const sortedSessions = [...sessions].sort((a, b) => {
+    const aNew = a.id && !seenSessions.has(a.id) ? 1 : 0;
+    const bNew = b.id && !seenSessions.has(b.id) ? 1 : 0;
+    return bNew - aNew;
+  });
   const liveSection = `
     <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin-bottom:8px;padding-left:4px;">
       🟢 실시간 상담 ${sessions.length > 0 ? `(${sessions.length}개)` : '(없음)'}
     </div>
     ${sessions.length === 0
       ? '<div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px;border:1px dashed #e5e7eb;border-radius:12px;margin-bottom:4px;">현재 진행 중인 상담 없음</div>'
-      : sessions.map(s => {
+      : sortedSessions.map(s => {
           if (!s.id) return '';
           const isAdmin     = s.mode === 'admin';
           const ago         = timeSince(new Date(s.lastMessageAt));
@@ -369,12 +382,17 @@ function renderDashboardSessions(sessions) {
         }).join('')
     }`;
 
-  // ── 저장된 상담 섹션 ──
+  // ── 저장된 상담 섹션 (미확인 우선 정렬) ──
+  const sortedConvs = [..._cachedConversations].sort((a, b) => {
+    const aNew = a.id && !seenSessions.has(a.id) ? 1 : 0;
+    const bNew = b.id && !seenSessions.has(b.id) ? 1 : 0;
+    return bNew - aNew;
+  });
   const convSection = _cachedConversations.length === 0 ? '' : `
     <div style="font-size:12px;font-weight:700;color:#6b7280;letter-spacing:.05em;margin:16px 0 8px;padding-left:4px;">
       📁 저장된 상담 (최근 ${_cachedConversations.length}건)
     </div>
-    ${_cachedConversations.map(c => {
+    ${sortedConvs.map(c => {
       if (!c.id) return '';
       const isNew       = !seenSessions.has(c.id);
       const borderColor = isNew ? '#f97316' : '#e5e7eb';
