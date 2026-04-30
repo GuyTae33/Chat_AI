@@ -133,7 +133,7 @@ export async function autoSaveConversation(history) {
     const res = await fetch(`${SERVER}/api/summarize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: history }),
+      body: JSON.stringify({ messages: history.filter(m => m.role === 'user' || m.role === 'assistant') }),
     });
     if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
     const data = await res.json();
