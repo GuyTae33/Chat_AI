@@ -419,13 +419,14 @@ html, body {
 .msg-group.bot .msg-meta  { align-items: flex-start; }
 .msg-group.user .msg-meta { align-items: flex-end; }
 
-/* 읽음 표시 "1" */
+/* 읽음 표시 */
 .read-receipt {
-  font-size: 10.5px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--purple);
   line-height: 1;
 }
+.read-receipt::before { content: '읽음 '; font-weight: 400; font-size: 11px; }
 
 /* 시간 */
 .msg-time {
@@ -501,8 +502,9 @@ html, body {
 .quick-area:empty { display: none; }
 
 .quick-hint-label {
-  font-size: 11px;
-  color: var(--gray-400);
+  font-size: 11.5px;
+  color: var(--purple);
+  font-weight: 600;
   letter-spacing: .01em;
 }
 
@@ -511,22 +513,22 @@ html, body {
 }
 
 .qbtn {
-  padding: 5px 13px;
+  padding: 6px 14px;
   border-radius: 16px;
-  border: 1px dashed #d1d5db;
-  background: #f9fafb;
-  color: var(--gray-600);
-  font-size: 13px; font-weight: 400;
+  border: 1.5px solid var(--purple-mid);
+  background: var(--purple-pale);
+  color: #8a6a30;
+  font-size: 13px; font-weight: 500;
   cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
   transition: all .15s;
 }
-.qbtn:hover { background: var(--gray-100); color: var(--gray-900); }
+.qbtn:hover { background: var(--purple-mid); color: var(--gray-900); }
 
 .qbtn.choice {
   background: #faf3e0;
-  border: 1px solid var(--purple-mid);
+  border: 1.5px solid var(--purple);
   color: #a8883f;
-  font-weight: 500;
+  font-weight: 600;
 }
 .qbtn.choice:hover { background: var(--purple-pale); }
 
@@ -714,6 +716,22 @@ html, body {
 }
 .send:hover:not(:disabled) { transform: scale(1.08); }
 .send:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+/* 로딩 중: 스피너로 교체 */
+.send[data-loading="1"] {
+  opacity: 1 !important;
+  cursor: wait;
+  font-size: 0;
+}
+.send[data-loading="1"]::after {
+  content: '';
+  display: block;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin-send .6s linear infinite;
+}
+@keyframes spin-send { to { transform: rotate(360deg); } }
 
 /* 이모티콘 피커 */
 .emoji-picker {
@@ -777,7 +795,19 @@ html, body {
   transition: max-height .35s ease, padding .3s ease;
   flex-shrink: 0;
 }
-.history-drawer.open { max-height: 600px; overflow-y: auto; }
+.history-drawer.open {
+  max-height: 600px;
+  overflow-y: auto;
+  /* 스크롤 가능 표시: 하단 그림자 힌트 */
+  background:
+    linear-gradient(var(--white) 30%, transparent),
+    linear-gradient(transparent, var(--white) 70%) 0 100%,
+    radial-gradient(farthest-side at 50% 0, rgba(0,0,0,.08), transparent),
+    radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.08), transparent) 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 40px, 100% 40px, 100% 12px, 100% 12px;
+  background-attachment: local, local, scroll, scroll;
+}
 .history-drawer-inner { padding: 14px 16px 14px; }
 
 .history-drawer-title {
@@ -930,6 +960,7 @@ html, body {
 .h-collect-btn {
   display: flex; align-items: center; gap: 5px;
   padding: 5px 11px;
+  min-height: 36px;
   background: rgba(255,255,255,.18);
   border: 1.5px solid rgba(255,255,255,.35);
   border-radius: 16px;
@@ -1140,7 +1171,7 @@ html, body {
   display: flex; align-items: center; gap: 8px;
 }
 .collect-bar-wrap {
-  flex: 1; height: 5px; background: var(--gray-200); border-radius: 4px; overflow: hidden;
+  flex: 1; height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden;
 }
 .collect-bar {
   height: 100%;
@@ -1148,7 +1179,7 @@ html, body {
   border-radius: 4px;
   transition: width .4s ease;
 }
-.collect-pct { font-size: 11px; font-weight: 700; color: var(--purple); min-width: 28px; text-align: right; }
+.collect-pct { font-size: 13px; font-weight: 700; color: var(--purple); min-width: 32px; text-align: right; }
 
 .rc-section { margin-top: 14px; }
 .rc-section-title {
@@ -1213,8 +1244,13 @@ html, body {
   flex-shrink: 0; background: none; border: none;
   font-size: 14px; color: var(--gray-500); cursor: pointer;
   padding: 4px 6px; border-radius: 6px; line-height: 1;
+  min-width: 36px; min-height: 36px;
+  display: flex; align-items: center; justify-content: center;
 }
 .attach-remove:hover { background: var(--gray-200); color: var(--gray-800); }
+@media (max-width: 767px) {
+  .attach-remove { min-width: 44px; min-height: 44px; font-size: 16px; }
+}
 
 /* ── 이미지 붙여넣기 미리보기 오버레이 ─────────── */
 .img-preview-overlay {
