@@ -227,104 +227,37 @@ print(f"✅ 견적서 PDF 생성 완료: {filename}")
 
 ---
 
-## 2-B: HTML 모드 (채팅 환경)
+## 2-B: 텍스트 모드 (채팅 환경)
 
-Bash 도구 없이 채팅에서 실행될 때는 아래 HTML 템플릿에 데이터를 채워서 **코드 블록으로 출력**한다.
-출력 후 고객에게 안내: "아래 HTML을 복사해서 .html 파일로 저장하신 후 브라우저에서 열어 인쇄(Ctrl+P) → PDF로 저장하시면 돼요 "
+Bash 도구 없이 채팅에서 실행될 때는 **HTML 코드를 절대 출력하지 않는다.**
+대신 아래 텍스트 형식으로 견적 내용을 정리해서 출력한다.
 
-```html
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<style>
- @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
- * { margin: 0; padding: 0; box-sizing: border-box; }
- body { font-family: 'Noto Sans KR', sans-serif; padding: 30px; font-size: 11px; }
- @page { size: A4; margin: 20mm; }
- @media print { body { padding: 0; } }
- .title {
- text-align: center; color: #C0504D; font-size: 18px; font-weight: bold;
- padding: 10px; border: 1px solid #000; margin-bottom: 0;
- }
- table { width: 100%; border-collapse: collapse; }
- td { border: 1px solid #000; padding: 5px 7px; vertical-align: middle; }
- .label { background: #D9D9D9; font-weight: bold; text-align: center; white-space: nowrap; }
- .red-hd { background: #C0504D; color: #fff; font-weight: bold; text-align: center; font-size: 12px; }
- .gray-hd { background: #808080; color: #fff; font-weight: bold; text-align: center; }
- .plan { height: 180px; }
- .footer td { background: #D9D9D9; text-align: center; font-size: 10px; font-weight: bold; }
-</style>
-</head>
-<body>
-<div class="title">케이트블랑 드레스룸 견적서</div>
-<table>
- <tr>
- <td class="label" style="width:10%">고객명</td>
- <td style="width:20%">{{customer_name}}</td>
- <td class="label" style="width:8%">날짜</td>
- <td style="width:14%">{{today_date}}</td>
- <td class="label" style="width:7%">전화</td>
- <td>{{customer_phone}}</td>
- </tr>
- <tr>
- <td class="label">주소</td>
- <td colspan="5">{{customer_address}}</td>
- </tr>
- <tr>
- <td class="label">견적</td>
- <td colspan="2">{{quote_amount}}</td>
- <td class="label" colspan="1">결제방식</td>
- <td colspan="2">{{payment_method}}</td>
- </tr>
- <tr><td class="red-hd" colspan="6">주문내역</td></tr>
- <tr>
- <td class="label" rowspan="2">색상</td>
- <td colspan="2" rowspan="2">{{color_val}}</td>
- <td class="label">천장</td>
- <td colspan="2">{{ceiling_height}}</td>
- </tr>
- <tr>
- <td class="label">커튼박스</td>
- <td colspan="2">{{curtain_box}}</td>
- </tr>
- <tr>
- <td class="label">내용</td>
- <td colspan="5">{{structure_detail}}</td>
- </tr>
- <tr>
- <td class="label" rowspan="3">추가 옵션</td>
- <td class="label">2단 서랍</td><td>{{opt_drawer2}}</td>
- <td class="label">5단선반</td><td colspan="2">{{opt_shelf5}}</td>
- </tr>
- <tr>
- <td class="label">3단 서랍</td><td>{{opt_drawer3}}</td>
- <td class="label">배송비</td><td colspan="2">{{delivery_cost}}</td>
- </tr>
- <tr>
- <td class="label">기둥추가</td><td>{{opt_pillar}}</td>
- <td colspan="3"></td>
- </tr>
- <tr>
- <td class="label">참고 사항</td>
- <td colspan="5" style="min-height:40px">{{notes}}</td>
- </tr>
- <tr><td class="gray-hd" colspan="6">평면도</td></tr>
- <tr><td colspan="6" class="plan"></td></tr>
-</table>
-<table class="footer" style="margin-top:0">
- <tr>
- <td style="width:25%">(주)루마네시스템</td>
- <td style="width:25%">기업은행<br>660-041655-04-011</td>
- <td style="width:25%">사업자번호 : 793-81-02453</td>
- <td style="width:25%">TEL 010-3784-5215</td>
- </tr>
-</table>
-</body>
-</html>
 ```
+[설치 공간]
+-
 
-**중요**: `{{변수명}}` 부분을 실제 추출된 데이터로 모두 치환해서 출력한다. 빈 값은 빈 문자열로 둔다.
+[설치 예상 치수]
+- 1면:
+- 2면:
+- (해당 면 없으면 생략)
+- 합산:
+
+[예상 구성]
+- 기본 행거
+- 선반
+- (옵션 있으면 추가)
+
+[금액]
+- 기본 금액:
+- 할인 적용:
+- 최종 금액:
+
+[배송비]
+- 별도:
+
+[안내]
+- 본 견적은 도면 확정 전 예상 견적이며, 실제 시공 시 변경될 수 있습니다.
+```
 
 ---
 
