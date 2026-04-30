@@ -905,17 +905,29 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
 });
 
 // ── 세션 등록 API ─────────────────────────────────────────────
-app.post('/api/session/register', (req, res) => {
+app.post('/api/session/register', async (req, res) => {
   const { sessionId, nickname, isTest } = req.body;
   if (!sessionId || !SESSION_ID_RE.test(sessionId)) {
     return res.status(400).json({ error: '유효하지 않은 sessionId' });
   }
   const sess = getOrCreateSession(sessionId);
   if (nickname && typeof nickname === 'string') {
-    sess.customerName = nickname.trim().slice(0, 20);
-    sess.customerNameIsTemp = false;
+    const trimmed = nickname.trim().slice(0, 20);
+    sess.nickname = trimmed;
+    sess.customerName = trimmed;
+    sess.customerNameIsTemp = true;
   }
   if (isTest === true) sess.isTest = true;
+  // 재방문 여부 확인
+  if (sess.nickname && sess.isReturning === undefined) {
+    try {
+      const { count } = await supabase
+        .from('conversations')
+        .select('id', { count: 'exact', head: true })
+        .eq('customer_name', sess.nickname);
+      sess.isReturning = (count || 0) > 0;
+    } catch { sess.isReturning = false; }
+  }
   res.json({ ok: true });
 });
 
@@ -951,6 +963,8 @@ app.get('/api/admin/sessions', async (_req, res) => {
       lastActivity: sess.lastActivity,
       lastMessageAt: sess.lastMessageAt || sess.startedAt,
       isTest: sess.isTest || false,
+      isReturning: sess.isReturning || false,
+      nickname: sess.nickname || null,
     });
     sessionIds.push(id);
   }

@@ -667,6 +667,8 @@ function renderDashboardSessions(sessions) {
               <div style="display:flex;align-items:center;gap:5px;">
                 <span style="font-size:15px;font-weight:${unread?'700':'600'};color:#111827;">${escAdmin(s.customerName)}</span>
                 ${s.isTest ? '<span style="font-size:10px;padding:1px 5px;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:700;">테스트</span>' : ''}
+                ${!s.isTest && s.isReturning ? '<span style="font-size:10px;padding:1px 5px;border-radius:6px;background:#d1fae5;color:#065f46;font-weight:700;">재방문</span>' : ''}
+                ${!s.isTest && !s.isReturning ? '<span style="font-size:10px;padding:1px 5px;border-radius:6px;background:#e0f2fe;color:#0369a1;font-weight:700;">첫방문</span>' : ''}
               </div>
               <span style="font-size:11px;color:#9ca3af;flex-shrink:0;margin-left:8px;">${ago}</span>
             </div>
