@@ -864,11 +864,9 @@ body {
   /* 섹션 패딩 최소화 */
   .section { padding: 8px; }
 
-  /* 통계 카드: 미확인 전체 폭, 나머지 2열 */
-  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+  /* 통계 카드: 모바일 패딩 축소 */
+  .stats-grid { gap: 8px; margin-bottom: 12px; }
   .stats-card { padding: 12px 14px; }
-  .stats-card--unread { grid-column: span 2; grid-row: auto; }
-  .stats-card--total { grid-column: auto; }
   .stats-card--total .stats-label { font-size: 11px; margin-bottom: 4px; }
   .stats-card--total .stats-value { font-size: 26px; margin-bottom: 4px; }
   .stats-card--total .stats-sub { font-size: 11px; }
@@ -999,7 +997,7 @@ body {
 ============================================= */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   margin-bottom: 24px;
   align-items: start;
