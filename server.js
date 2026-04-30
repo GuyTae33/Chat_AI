@@ -83,9 +83,7 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 
 function requireAdmin(req, res, next) {
   if (!ADMIN_TOKEN) {
-    // 토큰 미설정 시 서버 콘솔에 경고 (운영 중엔 항상 설정할 것)
-    console.warn('⚠️  ADMIN_TOKEN이 .env에 설정되지 않았습니다. Admin API가 무방비 상태입니다.');
-    return next();
+    return res.status(403).json({ error: 'Admin 기능이 비활성화되어 있습니다.' });
   }
   const auth = req.headers['authorization'];
   if (auth !== `Bearer ${ADMIN_TOKEN}`) {
