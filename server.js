@@ -327,17 +327,7 @@ async function upsertConversation(sess) {
       messages:        sess.messages,
     };
 
-    const { data: existing } = await supabase
-      .from(table)
-      .select('id')
-      .eq('session_id', sess.id)
-      .maybeSingle();
-
-    if (existing) {
-      await supabase.from(table).update(payload).eq('session_id', sess.id);
-    } else {
-      await supabase.from(table).insert(payload);
-    }
+    await supabase.from(table).upsert(payload, { onConflict: 'session_id' });
   } catch (err) {
     console.error('실시간 저장 오류:', err.message);
   }
