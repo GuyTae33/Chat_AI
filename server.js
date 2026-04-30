@@ -530,6 +530,10 @@ app.get('/api/og', async (req, res) => {
   if (!url || !/^https?:\/\//i.test(url)) {
     return res.status(400).json({ error: 'url 파라미터가 필요합니다' });
   }
+  const BLOCKED_IP = /^https?:\/\/(localhost|127\.|0\.0\.0\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1|169\.254\.)/i;
+  if (BLOCKED_IP.test(url)) {
+    return res.status(400).json({ error: '허용되지 않는 URL입니다' });
+  }
 
   // YouTube: oEmbed API로 제목 + 썸네일 가져오기
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
