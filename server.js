@@ -404,34 +404,6 @@ app.get('/api/health', (req, res) => {
 });
 
 // ── 이전 상담 이력 조회 API (전화번호로 필터링) ───────────────
-app.get('/api/consultation-history', async (req, res) => {
-  const { phone } = req.query;
-  if (!phone) return res.status(400).json({ error: 'phone 파라미터가 필요합니다' });
-
-  const cleanPhone = phone.replace(/[-\s]/g, '');
-
-  try {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('id, saved_at, messages, customer_name, phone, region, layout, size_raw, estimated_price')
-      .not('phone', 'is', null)
-      .order('saved_at', { ascending: false })
-      .limit(30);
-
-    if (error) throw error;
-
-    // 전화번호 정규화 후 필터링
-    const filtered = (data || []).filter(row => {
-      const p = (row.phone || '').replace(/[-\s]/g, '');
-      return p && p === cleanPhone;
-    });
-
-    res.json({ consultations: filtered });
-  } catch (err) {
-    console.error('이력 조회 오류:', err.message);
-    res.status(500).json({ error: '조회 중 오류가 발생했습니다' });
-  }
-});
 
 // ── 버전 체크 (배포 자동감지용) ───────────────────────────────
 // 서버 시작 시각 = 버전. 배포마다 서버가 재시작되므로 값이 달라짐.

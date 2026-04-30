@@ -140,11 +140,6 @@ export async function autoSaveConversation(history) {
     if (!data.success) throw new Error(data.error || '저장 실패');
     console.log('✅ 상담 자동 저장 완료:', data.summary?.이름 || '(이름 미확인)');
 
-    /* 연락처 localStorage에 저장 → 다음 방문 시 이전 상담 자동 로드 */
-    const phone = data.summary?.연락처;
-    if (phone) {
-      localStorage.setItem('루마네_연락처', phone.replace(/[-\s]/g, ''));
-    }
     return data.summary;
   } catch (err) {
     console.error('⚠️ 상담 자동 저장 실패 (재시도 없음):', err.message);
