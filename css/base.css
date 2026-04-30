@@ -669,20 +669,20 @@ body > main, .site-main { padding-top: var(--header-h); }
 /* ── AI 견적상담 소개 섹션 ───────────────────── */
 .ai-consult-section {
   background: #f4f1ec;
+  text-align: center;
 }
 .ai-consult-inner {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
-  align-items: center;
+  max-width: 640px;
+  margin: 0 auto;
 }
 .ai-consult-features {
   list-style: none;
   padding: 0;
   margin: 0 0 28px;
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   gap: 10px;
+  text-align: left;
 }
 .ai-consult-features li {
   display: flex;
@@ -703,65 +703,8 @@ body > main, .site-main { padding-top: var(--header-h); }
   font-size: 16px;
   padding: 14px 32px;
 }
-.ai-consult-visual {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #fff;
-  border-radius: 20px;
-  padding: 28px 24px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-}
-.ai-consult-bubble {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-}
-.ai-consult-bubble--user {
-  flex-direction: row-reverse;
-}
-.ai-bubble-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--gold-dark, #a8883f);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.ai-bubble-msg {
-  background: #f3f4f6;
-  border-radius: 16px 16px 16px 4px;
-  padding: 10px 14px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: #111827;
-  max-width: 85%;
-}
-.ai-consult-bubble--user .ai-bubble-msg {
-  background: var(--gold-dark, #a8883f);
-  color: #fff;
-  border-radius: 16px 16px 4px 16px;
-}
 
-@media (max-width: 900px) {
-  .ai-consult-inner {
-    grid-template-columns: 1fr;
-    gap: 36px;
-  }
-}
-@media (max-width: 767px) {
-  .ai-consult-visual {
-    padding: 20px 16px;
-  }
-  .ai-bubble-msg {
-    font-size: 13px;
-  }
-}
+
 
 /* ── 인라인 견적 폼 섹션 ──────────────────────── */
 .inline-quote-section {
