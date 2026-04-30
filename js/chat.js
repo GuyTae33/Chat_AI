@@ -96,6 +96,7 @@ function pruneArchive(archive) {
 
 function archiveCurrent() {
   if (!history || history.length === 0) return;
+  if (!history.some(m => m.role === 'user')) return;
   try {
     const raw = JSON.parse(localStorage.getItem(ARCHIVE_KEY) || '[]');
     const archive = pruneArchive(raw);
