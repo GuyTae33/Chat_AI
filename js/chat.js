@@ -537,7 +537,10 @@ async function send(prefilledText) {
     if (failedText) {
       errDiv.querySelector('[data-retry]')?.addEventListener('click', () => {
         // history에서 실패한 user 메시지 제거 후 재전송
-        const idx = history.findLastIndex(m => m.role === 'user' && m.content === failedText);
+        let idx = -1;
+        for (let i = history.length - 1; i >= 0; i--) {
+          if (history[i].role === 'user' && history[i].content === failedText) { idx = i; break; }
+        }
         if (idx !== -1) history.splice(idx, 1);
         errDiv.remove();
         send(failedText);
