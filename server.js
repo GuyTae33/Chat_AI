@@ -1563,6 +1563,8 @@ app.post('/api/summarize', async (req, res) => {
     return res.status(400).json({ error: 'messages 배열이 필요합니다.' });
   }
 
+  const recentMessages = messages.slice(-30);
+
   try {
     // Claude에게 대화 내용 분석 요청
     const response = await client.messages.create({
@@ -1599,7 +1601,7 @@ app.post('/api/summarize', async (req, res) => {
       messages: [
         {
           role: 'user',
-          content: `다음 상담 대화를 분석해서 JSON으로 추출해주세요:\n\n${messages.map(m => `${m.role === 'user' ? '고객' : '루마네'}: ${m.content}`).join('\n')}`,
+          content: `다음 상담 대화를 분석해서 JSON으로 추출해주세요:\n\n${recentMessages.map(m => `${m.role === 'user' ? '고객' : '루마네'}: ${m.content}`).join('\n')}`,
         },
       ],
     });
