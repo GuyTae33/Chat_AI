@@ -220,8 +220,8 @@ async function fetchLiveSessions() {
     renderLiveSessionList(sessions);
 
     /* ── 세션 자동 선택 ── */
-    if (sessions.length > 0 && !liveSelectedId) {
-      /* 아직 선택된 세션 없으면 가장 최근 세션 자동 선택 */
+    if (sessions.length > 0 && !liveSelectedId && !_selectedSavedConvId) {
+      /* 아직 선택된 세션 없고 저장 상담도 안 보고 있으면 가장 최근 세션 자동 선택 */
       selectLiveSession(sessions[0].id);
     } else if (liveSelectedId && !sessions.find(s => s.id === liveSelectedId)) {
       /* 선택했던 세션이 사라졌으면 다음 세션으로 전환 */
