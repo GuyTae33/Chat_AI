@@ -232,9 +232,10 @@ function parseOrderSheet(text) {
   }
 
   return {
-    customer_name:   get(/고객명[:\s]+([^|\n]+)/) || get(/성함[:\s]+([^\n]+)/),
-    phone:           get(/전화[:\s]+([^|\n]+)/)   || get(/연락처[:\s]+([^\n]+)/),
-    region:          get(/주소[:\s]+([^|\n]+)/),
+    // 개인정보(이름·전화·주소) 자동 추출 비활성화 — 지침에 따라 견적서에 절대 안 들어감
+    customer_name:   null,
+    phone:           null,
+    region:          null,
     layout:          get(/설치\s*형태[:\s]+([^\n]+)/),
     frame_color:     frame_color || null,
     shelf_color:     shelf_color || null,
@@ -1512,94 +1513,10 @@ app.get('/api/quotes', async (_req, res) => {
   }
 });
 
-app.post('/api/quote', async (req, res) => {
-  try {
-    const {
-      name, phone, region,
-      width, depth, height,
-      layout_type, options,
-      frame_color, shelf_color,
-      request_memo, has_photo, file_name,
-    } = req.body;
-
-    const quoteNumber = 'KB-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + String(Date.now()).slice(-4);
-
-    const { data, error } = await supabase
-      .from('quotes')
-      .insert([{
-        quote_number: quoteNumber,
-        name:          name || '',
-        phone:         phone || '',
-        region:        region || '',
-        width:         parseFloat(width) || 0,
-        depth:         parseFloat(depth) || 0,
-        height:        parseFloat(height) || 0,
-        layout_type:   layout_type || '',
-        options:       Array.isArray(options) ? options : [],
-        frame_color:   frame_color || '',
-        shelf_color:   shelf_color || '',
-        request_memo:  request_memo || '',
-        privacy_agreed: true,
-        has_photo:     has_photo || '',
-        file_name:     file_name || '',
-        status:        '접수',
-      }])
-      .select('id')
-      .single();
-
-    if (error) throw error;
-    console.log(`✅ 견적 접수됨: ${quoteNumber} (ID: ${data.id})`);
-    res.json({ success: true, id: data.id, quote_number: quoteNumber });
-  } catch (err) {
-    console.error('❌ 견적 저장 오류:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── 대화 저장 API ─────────────────────────────────────────────
-// chat.html에서 대화 종료 시 전체 메시지를 Supabase에 저장
-app.post('/api/save-conversation', async (req, res) => {
-  const { messages } = req.body;
-
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return res.status(400).json({ error: 'messages 배열이 필요합니다.' });
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert([{ messages }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    console.log(`✅ 대화 저장됨: ID ${data.id} (${messages.length}개 메시지)`);
-    res.json({ success: true, id: data.id });
-
-  } catch (err) {
-    console.error('❌ 대화 저장 오류:', err.message);
-    res.status(500).json({ error: '저장 중 오류가 발생했습니다.' });
-  }
-});
-
-// ── 대화 목록 조회 API ─────────────────────────────────────────
-app.get('/api/conversations', async (req, res) => {
-  try {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    res.json({ success: true, conversations: data });
-
-  } catch (err) {
-    console.error('❌ 대화 조회 오류:', err.message);
-    res.status(500).json({ error: '조회 중 오류가 발생했습니다.' });
-  }
-});
+// ── 삭제됨 (보안): /api/quote POST, /api/save-conversation POST, /api/conversations GET
+// 사용처 없는 죽은 라우트 + 인증 부재로 인한 PII 노출 위험 → 일괄 제거.
+// AI 자동 견적 등록은 autoRegisterQuote() 내부 함수로 처리 (별도 라우트 불필요).
+// 어드민용은 /api/admin/conversations, /api/admin/quotes 사용.
 
 // ── 상담 요약 저장 API ─────────────────────────────────────────
 // chat.html에서 "상담 저장" 버튼 클릭 시 호출
