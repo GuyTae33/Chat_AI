@@ -15,6 +15,8 @@ const { Client: NotionClient } = require('@notionhq/client');
 const multer = require('multer');
 const fs   = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const dns = require('dns').promises;
 
 // ── Supabase 클라이언트 ───────────────────────────────────────
 const supabase = createClient(
@@ -85,8 +87,15 @@ function requireAdmin(req, res, next) {
   if (!ADMIN_TOKEN) {
     return res.status(403).json({ error: 'Admin 기능이 비활성화되어 있습니다.' });
   }
-  const auth = req.headers['authorization'];
-  if (auth !== `Bearer ${ADMIN_TOKEN}`) {
+  const auth = req.headers['authorization'] || '';
+  // 타이밍 공격 방지 — 길이 다르면 즉시 reject, 같으면 timingSafeEqual
+  const expected = `Bearer ${ADMIN_TOKEN}`;
+  if (auth.length !== expected.length) {
+    return res.status(401).json({ error: '인증이 필요합니다.' });
+  }
+  const a = Buffer.from(auth);
+  const b = Buffer.from(expected);
+  if (!crypto.timingSafeEqual(a, b)) {
     return res.status(401).json({ error: '인증이 필요합니다.' });
   }
   next();
@@ -489,13 +498,45 @@ app.post('/api/upload', uploadMw.single('file'), async (req, res) => {
 });
 
 // ── OG 링크 미리보기 API ─────────────────────────────────────
+// SSRF 방어: 호스트네임을 실제 IP로 해석 후 사설/loopback 대역 차단
+function _isPrivateIp(ip) {
+  if (!ip) return true;
+  // IPv4 사설/loopback/링크로컬
+  if (/^127\./.test(ip)) return true;
+  if (/^10\./.test(ip)) return true;
+  if (/^192\.168\./.test(ip)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return true;
+  if (/^169\.254\./.test(ip)) return true;
+  if (/^0\./.test(ip)) return true;
+  // IPv6 loopback / 링크로컬 / unique-local
+  if (ip === '::1' || ip === '::') return true;
+  if (/^fe80:/i.test(ip)) return true;
+  if (/^fc[0-9a-f]{2}:/i.test(ip) || /^fd[0-9a-f]{2}:/i.test(ip)) return true;
+  return false;
+}
+async function _safeUrlOrThrow(url) {
+  const u = new URL(url);
+  const lookups = await dns.lookup(u.hostname, { all: true });
+  for (const { address } of lookups) {
+    if (_isPrivateIp(address)) throw new Error('내부 IP 차단');
+  }
+  return u;
+}
+
 app.get('/api/og', async (req, res) => {
   const { url } = req.query;
   if (!url || !/^https?:\/\//i.test(url)) {
     return res.status(400).json({ error: 'url 파라미터가 필요합니다' });
   }
+  // 정규식 1차 차단 (8진수·hex 등 우회 방지를 위해 dns 검증도 함께)
   const BLOCKED_IP = /^https?:\/\/(localhost|127\.|0\.0\.0\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1|169\.254\.)/i;
   if (BLOCKED_IP.test(url)) {
+    return res.status(400).json({ error: '허용되지 않는 URL입니다' });
+  }
+  // dns 기반 IP 검증 (8진수·10진수·DNS 리바인딩 방어)
+  try {
+    await _safeUrlOrThrow(url);
+  } catch {
     return res.status(400).json({ error: '허용되지 않는 URL입니다' });
   }
 
@@ -524,7 +565,11 @@ app.get('/api/og', async (req, res) => {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LumaneBot/1.0)' },
       signal:  AbortSignal.timeout(5000),
+      redirect: 'manual', // SSRF 방어: 자동 리다이렉트로 내부 IP 우회 차단
     });
+    if (resp.status >= 300 && resp.status < 400) {
+      return res.status(400).json({ error: '리다이렉트 차단됨' });
+    }
     const html = await resp.text();
 
     // HTML 엔티티 디코딩 (&amp; → & 등)
@@ -844,7 +889,9 @@ app.post('/api/chat', chatRateLimit, async (req, res) => {
       // AI 응답에서 "OO 고객님" 패턴으로 이름 추출 — 임시 이름인 경우만 업데이트
       if (sess.customerNameIsTemp) {
         const nameMatch = reply.match(/([가-힣]{2,5})\s*고객님/);
-        if (nameMatch) {
+        // 흔한 어미·감탄사·조사 블랙리스트 (이름이 아님)
+        const _NOT_NAME = new Set(['네','예','응','아','오','음','어','네네','그래','그리고','감사','죄송','반갑','맞아','맞습','괜찮','알겠']);
+        if (nameMatch && !_NOT_NAME.has(nameMatch[1])) {
           sess.customerName = nameMatch[1];
           sess.customerNameIsTemp = false;
         }
@@ -1229,11 +1276,16 @@ app.post('/api/admin/release', (req, res) => {
 app.post('/api/admin/message', (req, res) => {
   const { sessionId, message } = req.body;
   if (!sessionId || !message) return res.status(400).json({ error: 'sessionId, message 필요' });
+  // 입력 검증 — 문자열 + 길이 제한
+  if (typeof message !== 'string') {
+    return res.status(400).json({ error: 'message는 문자열이어야 합니다' });
+  }
+  const trimmed = message.slice(0, 2000);
 
   const sess = sessions.get(sessionId);
   if (!sess) return res.status(404).json({ error: '세션 없음' });
 
-  const msg = { role: 'assistant', content: message, fromAdmin: true, time: new Date().toISOString() };
+  const msg = { role: 'assistant', content: trimmed, fromAdmin: true, time: new Date().toISOString() };
   sess.pendingAdminMsgs.push(msg);
   sess.messages.push(msg);
   sess.lastActivity = new Date();
@@ -1285,7 +1337,10 @@ app.post('/api/admin/conversations/:id/resend-notion', async (req, res) => {
       .eq('id', req.params.id)
       .single();
     if (error) throw error;
-    const MAKE_WEBHOOK = 'https://hook.eu1.make.com/xalfs9y2jj2doxoikl3se5j3j3jve8f0';
+    const MAKE_WEBHOOK = process.env.MAKE_WEBHOOK_URL || 'https://hook.eu1.make.com/xalfs9y2jj2doxoikl3se5j3j3jve8f0';
+    if (!process.env.MAKE_WEBHOOK_URL) {
+      console.warn('⚠️ MAKE_WEBHOOK_URL 환경변수 미설정 — 코드에 박힌 기본값 사용 중. .env에 추가 권장.');
+    }
     const msgs = Array.isArray(c.messages) ? c.messages : [];
     const conversation = msgs.map(m =>
       `${m.role === 'user' ? '고객' : '루마네'}: ${(m.content || '').replace(/"/g, "'").replace(/\\/g, '').replace(/[\r\n\t]/g, ' ')}`
