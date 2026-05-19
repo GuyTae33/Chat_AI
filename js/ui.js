@@ -1135,7 +1135,7 @@ export function setInlineQuoteFromText(text) {
       <span class="iqt-label">예상 합계</span>
       <span class="iqt-price"></span>
     </div>
-    <button class="iq-cta">견적 요청서 작성하기 →</button>
+    <button class="iq-cta">📄 예상 견적서 받기 →</button>
   `;
   const body = card.querySelector('.iq-body');
   const addRow = (label, val) => {
@@ -1179,15 +1179,20 @@ export function setInlineQuoteFromText(text) {
   else if (/배송비/.test(text)) addRow('배송비', '지역 확인 필요');
 
   card.querySelector('.iqt-price').textContent = `약 ${(Number(priceM[1].replace(/,/g, '')) / 10000).toFixed(0)}만원`;
-  card.querySelector('.iq-cta').onclick = () => {
-    /* 채팅(예상견적) → 견적요청 폼(/quote, 정식견적) 직행. 채팅↔폼 분리 */
-    if (host && host.parentNode) host.remove();
-    /* embed(iframe 삽입) 시 부모 창을 이동 — iframe 내부만 덮이는 문제 방지 */
+  card.querySelector('.iq-cta').onclick = async () => {
+    /* 클릭 → 채팅 그 자리에서 예상 견적서 PNG 이미지 생성 (폼 이동 X) */
+    const cta = card.querySelector('.iq-cta');
+    cta.disabled = true;
+    const _orig = cta.textContent;
+    cta.textContent = '견적서 생성 중…';
     try {
-      if (window.top && window.top !== window.self) window.top.location.href = '/quote';
-      else window.location.href = '/quote';
-    } catch (_) {
-      window.location.href = '/quote';
+      const quoteEl = await renderQuoteImage(text);
+      card.replaceWith(quoteEl);
+      scrollOrPreview('루마네', '예상 견적서');
+    } catch (e) {
+      console.error('견적서 PNG 생성 실패:', e);
+      cta.disabled = false;
+      cta.textContent = _orig;
     }
   };
   container.appendChild(card);
