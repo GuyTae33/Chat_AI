@@ -1243,6 +1243,15 @@ export function updateQuickFromText(text) {
       /(드레스룸\s*형태|형태.*어떻게|어떤\s*형태|형태.*선택|어느\s*형태|형태로\s*생각|형태.*인지|형태.*계세요|어떤\s*형태로)/.test(text)) {
     setShapeCards({ inline: true }); return;
   }
+  /* 색상 — AI가 특정 색을 좁혀 물을 때: 언급된 색 이름만 칩으로 (컨텍스트 맞춤) */
+  const COLOR_TOKENS = ['솔리드화이트','화이트오크','샴페인골드','다크월넛','스톤그레이','진그레이','민트그린','메이플','블랙','실버','화이트'];
+  let _cScan = text, _cPicked = [];
+  for (const _c of COLOR_TOKENS) {
+    if (_cScan.includes(_c)) { _cPicked.push(_c); _cScan = _cScan.split(_c).join(' '); }
+  }
+  if (_cPicked.length >= 2 && /[?？]|어떤|좋으세요|중에|느낌|골라|선택|어울/.test(text)) {
+    setQuick(_cPicked, true); return;
+  }
   /* 선반 색상 질문 — 견적서 항목 언급이 아닌 실제 질문만 */
   if (/(선반\s*색상.*어떻게|선반\s*색상.*알려|선반\s*색상.*선택|선반\s*색상.*원하|어떤\s*선반\s*색상|선반\s*색상은)/.test(text)) {
     setQuick(['화이트오크', '솔리드화이트', '메이플', '스톤그레이', '진그레이', '다크월넛', '민트그린'], true); return;
