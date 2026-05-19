@@ -1209,6 +1209,11 @@ export function updateQuickFromText(text) {
     setProjectCarousel({ inline: true }); return;
   }
 
+  /* 도면·예시(3D) 안내 — 루마네가 "보여드릴까요?" 류로 물을 때 (지침17: '3D 도면' 표현 금지) */
+  if (/(도면|예시\s*이미지|구성\s*예시|예시).*(보여\s*드릴|보여\s*줄|보여\s*드릴까|보여\s*드려|볼래|보실래|보시겠|드릴까요|원하시|받아\s*보|보내\s*드릴까)/.test(text)) {
+    setQuick(['네, 예시 보여주세요', '괜찮아요'], true); return;
+  }
+
   /* ①②③ 스타일 선택지 자동 감지 */
   const circled = '①②③④⑤⑥⑦⑧⑨⑩';
   const choiceLines = text.split('\n').filter(l => circled.includes(l.trim()[0]));
