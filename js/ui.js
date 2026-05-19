@@ -1135,7 +1135,7 @@ export function setInlineQuoteFromText(text) {
       <span class="iqt-label">예상 합계</span>
       <span class="iqt-price"></span>
     </div>
-    <button class="iq-cta">정식 견적서 받기 →</button>
+    <button class="iq-cta">견적 요청서 작성하기 →</button>
   `;
   const body = card.querySelector('.iq-body');
   const addRow = (label, val) => {
@@ -1180,7 +1180,15 @@ export function setInlineQuoteFromText(text) {
 
   card.querySelector('.iqt-price').textContent = `약 ${(Number(priceM[1].replace(/,/g, '')) / 10000).toFixed(0)}만원`;
   card.querySelector('.iq-cta').onclick = () => {
-    _sendCardValue('네, 정식 견적서 받을게요', host);
+    /* 채팅(예상견적) → 견적요청 폼(/quote, 정식견적) 직행. 채팅↔폼 분리 */
+    if (host && host.parentNode) host.remove();
+    /* embed(iframe 삽입) 시 부모 창을 이동 — iframe 내부만 덮이는 문제 방지 */
+    try {
+      if (window.top && window.top !== window.self) window.top.location.href = '/quote';
+      else window.location.href = '/quote';
+    } catch (_) {
+      window.location.href = '/quote';
+    }
   };
   container.appendChild(card);
 }
