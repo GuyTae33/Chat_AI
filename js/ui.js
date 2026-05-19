@@ -796,9 +796,12 @@ export function hideAdminTyping() {
 }
 
 /* ── 퀵 버튼 ── */
-export function setQuick(labels, isChoice = false) {
+export function setQuick(labels, isChoice = false, opts = {}) {
   $quickArea.innerHTML = '';
   if (!labels || labels.length === 0) return;
+
+  /* G6: 직접입력 칩 공통 부착. 기본 ON. 예/아니오 양자택일 질문만 opts.allowManual:false */
+  const allowManual = opts.allowManual !== false;
 
   const hint = document.createElement('div');
   hint.className = 'quick-hint-label';
@@ -822,7 +825,7 @@ export function setQuick(labels, isChoice = false) {
     wrap.appendChild(b);
   });
 
-  if (!isChoice) {
+  if (allowManual) {
     const manual = document.createElement('button');
     manual.className = 'qbtn qbtn--manual';
     manual.textContent = '✏️ 직접 입력';
@@ -863,6 +866,20 @@ const OPTION_CARDS = [
   { value: '아일랜드장', emoji: '🏝️', label: '아일랜드장', price: '+169,000원' },
 ];
 
+/* P0 신규 카드 세트 (천장 높이 / 설치 지역) — 4구간 압축 (G5) */
+const CEILING_CARDS = [
+  { value: '천장 높이 2400mm 이하',  emoji: '📏', label: '2400mm 이하',  sub: '일반 아파트' },
+  { value: '천장 높이 2400~2700mm', emoji: '📏', label: '2400~2700mm', sub: '중간 층고' },
+  { value: '천장 높이 2700mm 이상',  emoji: '📏', label: '2700mm 이상',  sub: '높은 층고' },
+  { value: '천장 높이 잘 모르겠어요', emoji: '❓', label: '잘 모르겠어요', sub: '나중에 확인' },
+];
+const REGION_CARDS = [
+  { value: '설치지역 서울',                emoji: '🏙️', label: '서울',            sub: '배송비 2만원' },
+  { value: '설치지역 경기',                emoji: '🏘️', label: '경기',            sub: '배송비 3만원~' },
+  { value: '설치지역 충청·강원',           emoji: '⛰️', label: '충청·강원',       sub: '배송비 7만원~' },
+  { value: '설치지역 전라·경상·부산',      emoji: '🌊', label: '전라·경상·부산',  sub: '배송비 10만원' },
+];
+
 function _sendCardValue(value, inlineHost) {
   /* 인라인 모드: 카드 삽입 영역 제거 (말풍선은 유지) */
   if (inlineHost && inlineHost.parentNode) inlineHost.remove();
@@ -870,6 +887,44 @@ function _sendCardValue(value, inlineHost) {
   refreshSendBtn();
   $sendBtn.click();
 }
+
+/* G3/G6: 카드 그룹 하단에 '✏️ 직접 입력' 칩 공통 부착 */
+function _appendManualChip(targetEl, inline) {
+  const chips = document.createElement('div');
+  chips.className = 'option-quick-chips';
+  const chip = document.createElement('button');
+  chip.className = 'option-chip';
+  chip.textContent = '✏️ 직접 입력';
+  chip.onclick = () => {
+    if (inline && targetEl && targetEl.parentNode) targetEl.remove();
+    else $quickArea.innerHTML = '';
+    $inp.focus();
+  };
+  chips.appendChild(chip);
+  targetEl.appendChild(chips);
+}
+
+/* 범용 리스트형 카드 렌더 (예산 카드와 동일 레이아웃) — 천장·지역 등 재사용 */
+function _renderListCards(cards, opts) {
+  const t = _cardTarget(opts);
+  const wrap = document.createElement('div');
+  wrap.className = 'cards-budget';
+  cards.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'card-budget';
+    btn.innerHTML = `<div class="cb-emoji"></div><div class="cb-info"><div class="cb-amount"></div><div class="cb-desc"></div></div><div class="cb-arrow">→</div>`;
+    btn.querySelector('.cb-emoji').textContent = c.emoji;
+    btn.querySelector('.cb-amount').textContent = c.label;
+    btn.querySelector('.cb-desc').textContent = c.sub;
+    btn.onclick = () => _sendCardValue(c.value, t.inline ? t.el : null);
+    wrap.appendChild(btn);
+  });
+  t.el.appendChild(wrap);
+  _appendManualChip(t.el, t.inline);
+}
+
+export function setCeilingCards(opts) { _renderListCards(CEILING_CARDS, opts); }
+export function setRegionCards(opts)  { _renderListCards(REGION_CARDS,  opts); }
 
 /* 마지막 봇 메시지의 .msg-bubbles-row 안에 카드 삽입용 호스트 생성/회수
    DOM 구조: .msg-group.bot > .msg-body > .msg-bubbles-row > [.msg-bubbles, .msg-meta]
@@ -923,6 +978,7 @@ export function setShapeCards(opts) {
     grid.appendChild(btn);
   });
   t.el.appendChild(grid);
+  _appendManualChip(t.el, t.inline);
 }
 
 export function setBudgetCards(opts) {
@@ -946,6 +1002,7 @@ export function setBudgetCards(opts) {
     wrap.appendChild(btn);
   });
   t.el.appendChild(wrap);
+  _appendManualChip(t.el, t.inline);
 }
 
 export function setOptionCards(opts) {
@@ -1120,6 +1177,28 @@ export function updateQuickFromText(text) {
     setQuick(choiceLines.map(l => l.trim()), true); return;
   }
 
+  /* ── P0 신규 트리거 (고유명사 앵커링 — 광역 패턴보다 위) ── */
+  /* 천장 높이 — 카드 */
+  if (/(천장\s*높이|천장.*몇|층고|천장.*cm|천장.*mm)/.test(text)) {
+    setCeilingCards({ inline: true }); return;
+  }
+  /* 설치 지역 — 카드 (배송비 산정용, 시/도 수준만) */
+  if (/(설치\s*지역|어느\s*지역|지역.*어디|배송.*지역|어디.*거주|어디.*사세요)/.test(text)) {
+    setRegionCards({ inline: true }); return;
+  }
+  /* 설치 공간 — 칩 */
+  if (/(어느\s*공간|어떤\s*공간|공간에\s*설치|설치.*공간|어디에\s*설치)/.test(text)) {
+    setQuick(['안방', '거실', '작은방', '드레스룸', '베란다'], true); return;
+  }
+  /* 커튼박스 — 칩 */
+  if (/(커튼박스|커튼\s*박스)/.test(text)) {
+    setQuick(['있어요', '없어요', '잘 모르겠어요'], true); return;
+  }
+  /* 각 면 치수 — 직접입력 전용 + 보조칩 2개 (숫자라 카드 부적합) */
+  if (/(각\s*면\s*치수|치수.*알려|치수.*어떻게|치수.*되|면.*치수|가로.*세로.*높이|벽\s*길이)/.test(text)) {
+    setQuick(['📐 측정 방법 알려주세요', '치수를 잘 모르겠어요'], true); return;
+  }
+
   /* 예산 질문 — 카드 UI */
   if (/(예산.*얼마|예산.*어느|얼마.*생각|얼마.*예산|얼마쯤|얼마 정도|희망 금액|희망금액|얼마.*까지)/.test(text)) {
     setBudgetCards({ inline: true }); return;
@@ -1148,10 +1227,10 @@ export function updateQuickFromText(text) {
     setQuick(['5단', '6단', '7단', '코너 5단', '코너 6단', '코너 7단'], true); return;
   }
   if (/(개인정보\s*수집|동의해\s*주시겠어요)/.test(text)) {
-    setQuick(['동의합니다', '동의하지 않습니다'], true); return;
+    setQuick(['동의합니다', '동의하지 않습니다'], true, { allowManual: false }); return;
   }
   if (/(맞으신가요|확인해\s*주시면\s*접수)/.test(text)) {
-    setQuick(['네, 맞아요! 접수해주세요', '수정할 내용이 있어요'], true); return;
+    setQuick(['네, 맞아요! 접수해주세요', '수정할 내용이 있어요'], true, { allowManual: false }); return;
   }
   setQuick([]);
 }
