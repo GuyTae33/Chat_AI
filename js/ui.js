@@ -1230,8 +1230,14 @@ export function updateQuickFromText(text) {
   if (/(설치\s*지역|어느\s*지역|지역.*어디|배송.*지역|어디.*거주|어디.*사세요)/.test(text)) {
     setRegionCards({ inline: true }); return;
   }
-  /* 설치 공간 — 칩 */
-  if (/(어느\s*공간|어떤\s*공간|공간에\s*설치|설치.*공간|어디에\s*설치)/.test(text)) {
+  /* 형태 질문 — 공간 트리거보다 위 (공간+형태 동시언급 시 형태 우선) */
+  const _shapeHits = (text.match(/(일자형|1자형|ㄱ자형|ㄷ자형|11자형|ㅁ자형)/g) || []).length;
+  if ((_shapeHits >= 2 && /[?？]|인지|계세요|일까요|하세요|신가요|어떠세요|생각/.test(text)) ||
+      /(드레스룸\s*형태|형태.*어떻게|어떤\s*형태|형태.*선택|어느\s*형태|형태로\s*생각|형태.*인지|형태.*계세요|어떤\s*형태로)/.test(text)) {
+    setShapeCards({ inline: true }); return;
+  }
+  /* 설치 공간 — 칩 (광역 '설치.*공간' 제거 — 형태질문 오탐 방지) */
+  if (/(어느\s*공간|어떤\s*공간|공간에\s*설치|설치할\s*공간|설치하실\s*공간|어디에\s*설치)/.test(text)) {
     setQuick(['안방', '거실', '작은방', '드레스룸', '베란다'], true); return;
   }
   /* 커튼박스 — 칩 */
@@ -1246,12 +1252,6 @@ export function updateQuickFromText(text) {
   /* 예산 질문 — 카드 UI */
   if (/(예산.*얼마|예산.*어느|얼마.*생각|얼마.*예산|얼마쯤|얼마 정도|희망 금액|희망금액|얼마.*까지)/.test(text)) {
     setBudgetCards({ inline: true }); return;
-  }
-  /* 형태 질문 — 말투 변동 대응: ① 형태명 2개+ 나열 + 질문어 OR ② 형태 표현 */
-  const _shapeHits = (text.match(/(일자형|1자형|ㄱ자형|ㄷ자형|11자형|ㅁ자형)/g) || []).length;
-  if ((_shapeHits >= 2 && /[?？]|인지|계세요|일까요|하세요|신가요|어떠세요|생각/.test(text)) ||
-      /(드레스룸\s*형태|형태.*어떻게|어떤\s*형태|형태.*선택|어느\s*형태|형태로\s*생각|형태.*인지|형태.*계세요|어떤\s*형태로)/.test(text)) {
-    setShapeCards({ inline: true }); return;
   }
   /* 색상 — AI가 특정 색을 좁혀 물을 때: 언급된 색 이름만 칩으로 (컨텍스트 맞춤) */
   const COLOR_TOKENS = ['솔리드화이트','화이트오크','샴페인골드','다크월넛','스톤그레이','진그레이','민트그린','메이플','블랙','실버','화이트'];
