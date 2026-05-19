@@ -1010,7 +1010,7 @@ export function setOptionCards(opts) {
   if (!t.inline) {
     const hint = document.createElement('div');
     hint.className = 'quick-hint-label';
-    hint.textContent = '💡 중복 선택 가능 — 원하는 항목을 누르면 한 번에 한 개씩 전송돼요';
+    hint.textContent = '💡 여러 개 선택한 뒤 [선택 완료]를 눌러주세요';
     t.el.appendChild(hint);
   }
   const wrap = document.createElement('div');
@@ -1018,13 +1018,38 @@ export function setOptionCards(opts) {
   OPTION_CARDS.forEach(c => {
     const btn = document.createElement('button');
     btn.className = 'card-option';
+    btn.dataset.value = c.value;
     btn.innerHTML = `<span class="co-emoji"></span><div class="co-info"><div class="co-name"></div><div class="co-price"></div></div><div class="co-box">✓</div>`;
     btn.querySelector('.co-emoji').textContent = c.emoji;
     btn.querySelector('.co-name').textContent = c.label;
     btn.querySelector('.co-price').textContent = c.price;
-    btn.onclick = () => _sendCardValue(c.value, t.inline ? t.el : null);
+    btn.setAttribute('aria-pressed', 'false');
+    /* 다중선택: 클릭 = 체크 토글 (전송 X) */
+    btn.onclick = () => {
+      const on = btn.classList.toggle('selected');
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      _refreshOptConfirm();
+    };
     wrap.appendChild(btn);
   });
+
+  /* 선택 완료 버튼 — 선택된 옵션 한 번에 전송 */
+  const confirm = document.createElement('button');
+  confirm.className = 'co-confirm';
+  confirm.disabled = true;
+  confirm.textContent = '선택 완료';
+  const _refreshOptConfirm = () => {
+    const n = wrap.querySelectorAll('.card-option:not(.co-manual).selected').length;
+    confirm.disabled = n === 0;
+    confirm.textContent = n === 0 ? '선택 완료' : `선택 완료 (${n}개) →`;
+  };
+  confirm.onclick = () => {
+    const picked = [...wrap.querySelectorAll('.card-option:not(.co-manual).selected')]
+      .map(el => el.dataset.value).filter(Boolean);
+    if (picked.length === 0) return;
+    _sendCardValue(picked.join(', ') + ' 추가할게요', t.inline ? t.el : null);
+  };
+
   /* 직접 입력 버튼 */
   const manual = document.createElement('button');
   manual.className = 'card-option co-manual';
@@ -1036,6 +1061,7 @@ export function setOptionCards(opts) {
   };
   wrap.appendChild(manual);
   t.el.appendChild(wrap);
+  t.el.appendChild(confirm);
 
   /* 킵3 — 옵션 카드 아래 빠른 응답 칩 3개 */
   const chips = document.createElement('div');

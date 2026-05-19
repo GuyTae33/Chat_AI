@@ -705,6 +705,28 @@ html, body {
 }
 .card-option.co-manual .co-name { color: #b08850; }
 .card-option.co-manual .co-price { color: #a8a8a8; font-weight: 500; }
+/* 다중선택 — 선택 상태 */
+.card-option.selected {
+  border-color: #c9a96e;
+  background: linear-gradient(135deg, #fff8ee, #faf5ec);
+}
+.card-option.selected .co-box {
+  background: #c9a96e;
+  border-color: #c9a96e;
+  color: #fff;
+}
+/* 선택 완료 버튼 */
+.co-confirm {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; margin-top: 10px; padding: 13px;
+  border: none; border-radius: 12px;
+  background: linear-gradient(135deg, #c9a96e, #b08850);
+  color: #fff; font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(201,169,110,.3);
+  transition: opacity .18s;
+}
+.co-confirm:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
 
 /* ── 시공 사례 캐러셀 ── */
 .project-carousel {
