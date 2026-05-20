@@ -1018,7 +1018,8 @@ export function setShapeCards(opts) {
     btn.onclick = () => {
       /* 1) 메시지 전송 (기존 동작) */
       _sendCardValue(c.value, t.inline ? t.el : null);
-      /* 2) 코드 강제 3D 도면 fetch — AI [SHOW_EXAMPLE] 누락 대비 */
+      /* 2) 코드 강제 3D 도면 fetch — 단, 이번 상담에 이미 3D 이미지 본 적 있으면 중복 안 띄움 */
+      if (document.querySelector('.img-example')) return;
       const _shape = _shapeApiMap[c.value];
       if (!_shape) return;
       fetch(`${SERVER}/api/find-example?shape=${encodeURIComponent(_shape)}&units=&options=`)

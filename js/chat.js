@@ -509,9 +509,9 @@ async function send(prefilledText) {
       const exShape = parts[0] || '';
       const exUnits = parts[1] || '';
       const exOpts  = parts[2] || '';
-      // 같은 형태(shape) 예시는 세션당 최대 3개까지 표시
-      const shownCount = history.filter(m => m.role === 'image' && m.label === `📐 ${exShape} 예시`).length;
-      if (shownCount < 3) {
+      // 3D 도면은 세션당 1회만 (처음 형태 고를 때 노출이 끝). AI가 또 태그 보내도 중복 안 함.
+      const alreadyShown = history.some(m => m.role === 'image');
+      if (!alreadyShown) {
         fetch(`${SERVER}/api/find-example?shape=${encodeURIComponent(exShape)}&units=${encodeURIComponent(exUnits)}&options=${encodeURIComponent(exOpts)}`)
           .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
           .then(d => {
@@ -567,12 +567,9 @@ async function send(prefilledText) {
       updateQuickFromText(reply);
     }
 
-    /* B 안전망: 견적인데 이번 견적 턴에 예시 이미지가 없으면
-       견적서 [설치 공간]에서 형태 파싱해 예시 자동 표시 (AI가 [SHOW_EXAMPLE] 누락 대비)
-       ※ 마지막 user 메시지 이후만 확인 — 어제 본 이미지가 history에 남아있어도 차단 안 됨 */
-    const _lastUserIdx = history.map(m => m.role).lastIndexOf('user');
-    const _recent = _lastUserIdx >= 0 ? history.slice(_lastUserIdx) : history;
-    if (_isQuoteReply && !_recent.some(m => m.role === 'image')) {
+    /* B 안전망: 견적인데 이번 상담에 예시 이미지가 0건이면 견적서 [설치 공간]에서 형태 파싱해 표시.
+       3D는 세션당 1회 정책 — 이미 history에 image 있으면 견적 시 다시 안 띄움. */
+    if (_isQuoteReply && !history.some(m => m.role === 'image')) {
       const _sp = reply.match(/\[설치\s*공간\][^\n]*\n?\s*([^\n]+)/);
       const _pickShape = (s) => {
         if (!s) return '';
