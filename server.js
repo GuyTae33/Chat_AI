@@ -1171,7 +1171,19 @@ app.get('/api/session/status', (req, res) => {
   const pending = [...sess.pendingAdminMsgs];
   sess.pendingAdminMsgs = [];
 
-  res.json({ mode: sess.mode, pendingMsgs: pending, adminLastRead: sess.lastReadAt || null, adminTyping: sess.adminTyping || false });
+  /* drain 유실 / 페이지 재접속 대비 — 안읽음 admin mid 항상 동봉.
+     클라이언트가 이걸로 _pendingReadMids 동기화 → 어떤 상황이든 mark-read 가능 */
+  const unreadAdminMids = sess.messages
+    .filter(m => m.fromAdmin && m.mid && !m.read)
+    .map(m => m.mid);
+
+  res.json({
+    mode: sess.mode,
+    pendingMsgs: pending,
+    unreadAdminMids,
+    adminLastRead: sess.lastReadAt || null,
+    adminTyping: sess.adminTyping || false,
+  });
 });
 
 // ── 어드민: 활성 세션 목록 ────────────────────────────────────
@@ -1187,6 +1199,8 @@ app.get('/api/admin/sessions', async (_req, res) => {
       mode: sess.mode,
       customerName: sess.customerName || '(이름 미수집)',
       messageCount: sess.messages.filter(m => m.role === 'user').length,
+      /* 어드민 → 고객 안읽음 카운트 (카카오톡 '1' 표시용) */
+      unreadAdminCount: sess.messages.filter(m => m.fromAdmin && !m.read).length,
       startedAt: sess.startedAt,
       lastActivity: sess.lastActivity,
       lastMessageAt: sess.lastMessageAt || sess.startedAt,
@@ -1638,13 +1652,42 @@ app.post('/api/admin/message', (req, res) => {
   const sess = sessions.get(sessionId);
   if (!sess) return res.status(404).json({ error: '세션 없음' });
 
-  const msg = { role: 'assistant', content: trimmed, fromAdmin: true, time: new Date().toISOString() };
+  /* 읽음 추적용 mid + read 플래그. mid는 client mark-read 때 키로 사용 */
+  const mid = `adm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const msg = { role: 'assistant', content: trimmed, fromAdmin: true, time: new Date().toISOString(), mid, read: false };
   sess.pendingAdminMsgs.push(msg);
   sess.messages.push(msg);
   sess.lastActivity = new Date();
   sess.lastMessageAt = new Date();
 
-  res.json({ ok: true });
+  res.json({ ok: true, mid });
+});
+
+// ── 고객: 어드민 메시지 읽음 처리 (mark-read) ─────────────────
+// 고객 채팅 탭이 포커스됐을 때 호출 → 어드민 카드의 "안읽음 N" 뱃지 감소
+app.post('/api/session/mark-read', (req, res) => {
+  const { sessionId, mids } = req.body || {};
+  if (!sessionId || !SESSION_ID_RE.test(sessionId) || !sessions.has(sessionId)) {
+    return res.status(404).json({ error: 'no session' });
+  }
+  if (!Array.isArray(mids) || mids.length === 0) {
+    return res.status(400).json({ error: 'mids array required' });
+  }
+  const sess = sessions.get(sessionId);
+  /* mid 형식 화이트리스트 (server.js에서 발급한 형태만) — 잘못된 입력 차단 */
+  const MID_RE = /^adm-\d+-[a-z0-9]{6}$/;
+  const midSet = new Set(
+    mids.filter(id => typeof id === 'string' && MID_RE.test(id)).slice(0, 100)
+  );
+  let updated = 0;
+  for (const m of sess.messages) {
+    if (m.fromAdmin && m.mid && midSet.has(m.mid) && !m.read) {
+      m.read = true;
+      m.readAt = new Date().toISOString();
+      updated++;
+    }
+  }
+  res.json({ ok: true, updated });
 });
 
 // ── 어드민: 저장된 상담 목록 조회 ────────────────────────────
