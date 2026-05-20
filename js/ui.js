@@ -722,7 +722,15 @@ async function downloadImage(url, label) {
 }
 
 /* ── 예시 이미지 메시지 ── */
-export function addImageMsg(imgUrl, label) {
+/* "다른 예시 보기" 버튼 — 세션 내 이미 본 URL 누적 (exclude 파라미터 빌드용) */
+const _shownExampleUrls = new Set();
+
+export function addImageMsg(imgUrl, label, shape = '') {
+  if (imgUrl) _shownExampleUrls.add(imgUrl);
+  return _addImageMsgInner(imgUrl, label, shape);
+}
+
+function _addImageMsgInner(imgUrl, label, shape) {
   const group = document.createElement('div');
   group.className = 'msg-group bot';
 
@@ -765,6 +773,37 @@ export function addImageMsg(imgUrl, label) {
   dlBtn.textContent = '⬇ 다운로드';
   dlBtn.onclick = () => downloadImage(imgUrl, label);
   bubblesCol.appendChild(dlBtn);
+
+  /* "다른 예시 보기" 버튼 — shape 알려진 경우만 노출. 클릭 시 exclude 누적해서 새 이미지 fetch */
+  if (shape) {
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'img-download-btn';
+    moreBtn.style.marginTop = '6px';
+    moreBtn.textContent = '🔄 다른 예시 보기';
+    moreBtn.onclick = async () => {
+      moreBtn.disabled = true;
+      moreBtn.textContent = '불러오는 중...';
+      try {
+        const excludeStr = [..._shownExampleUrls].join(',');
+        const r = await fetch(`${SERVER}/api/find-example?shape=${encodeURIComponent(shape)}&units=&options=&exclude=${encodeURIComponent(excludeStr)}`);
+        if (!r.ok) throw new Error(r.status);
+        const d = await r.json();
+        if (d.success && typeof d.url === 'string') {
+          const newUrl = d.url.startsWith('http') ? d.url : `${SERVER}${d.url}`;
+          addImageMsg(newUrl, label, shape);
+          moreBtn.remove(); /* 이전 카드의 버튼은 제거 — 새 카드의 버튼이 다음 차례 */
+        } else {
+          moreBtn.disabled = true;
+          moreBtn.textContent = '더 이상 예시가 없어요';
+        }
+      } catch (e) {
+        console.warn('다른 예시 fetch 실패:', e);
+        moreBtn.disabled = false;
+        moreBtn.textContent = '🔄 다른 예시 보기';
+      }
+    };
+    bubblesCol.appendChild(moreBtn);
+  }
 
   const meta = document.createElement('div');
   meta.className = 'msg-meta';
@@ -1029,7 +1068,7 @@ export function setShapeCards(opts) {
             const imgUrl = d.url.startsWith('http') ? d.url : `${SERVER}${d.url}`;
             setTimeout(() => {
               addMsg('bot', `${c.label}은 이런 느낌이에요. 참고해서 봐주세요!`);
-              addImageMsg(imgUrl, `📐 ${_shape} 예시`);
+              addImageMsg(imgUrl, `📐 ${_shape} 예시`, _shape);
             }, 600);
           }
         })

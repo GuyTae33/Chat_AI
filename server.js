@@ -691,7 +691,7 @@ function scoreRow(row, shape, unitsNum, optList) {
 
 // ── 예시 이미지 매칭 API (DB 기반) ───────────────────────────
 app.get('/api/find-example', chatRateLimit, async (req, res) => {
-  let { shape = '', units = '', options = '' } = req.query;
+  let { shape = '', units = '', options = '', exclude = '' } = req.query;
   // AI가 ㅡ 대신 대시 문자(—, –, -)를 쓰는 경우 정규화
   shape = shape.replace(/^[—–\-]+자$/, 'ㅡ자');
   if (shape && !VALID_SHAPES.includes(shape)) {
@@ -701,6 +701,10 @@ app.get('/api/find-example', chatRateLimit, async (req, res) => {
   const rawUnits   = typeof units   === 'string' ? units   : '';
   const optList = rawOptions.split(',').map(s => s.trim().slice(0, 50)).filter(Boolean).slice(0, 10);
   const unitsNum = Math.min(Math.max(parseInt(rawUnits) || 0, 0), 100);
+  /* "다른 예시 보기" 용 — 이미 본 URL은 후보에서 제외 (콤마 분리, 최대 20개) */
+  const excludeList = (typeof exclude === 'string' ? exclude : '')
+    .split(',').map(s => s.trim()).filter(Boolean).slice(0, 20);
+  const excludeSet = new Set(excludeList);
 
   try {
     let query = supabase
@@ -715,6 +719,7 @@ app.get('/api/find-example', chatRateLimit, async (req, res) => {
     let best = null;
     let bestScore = -1;
     for (const row of data) {
+      if (excludeSet.has(row.url)) continue;
       const score = scoreRow(row, shape, unitsNum, optList);
       if (score > bestScore) { bestScore = score; best = row; }
     }

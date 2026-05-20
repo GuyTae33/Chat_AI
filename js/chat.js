@@ -520,7 +520,7 @@ async function send(prefilledText) {
               const imgLabel = `📐 ${exShape} 예시`;
               history.push({ role: 'image', url: imgUrl, label: imgLabel });
               saveHistory();
-              setTimeout(() => addImageMsg(imgUrl, imgLabel), 600);
+              setTimeout(() => addImageMsg(imgUrl, imgLabel, exShape), 600);
             }
           })
           .catch(e => console.warn('예시 이미지 로딩 실패:', e));
@@ -604,7 +604,7 @@ async function send(prefilledText) {
               saveHistory();
               setTimeout(() => {
                 addMsg('bot', introMsg);
-                addImageMsg(imgUrl, imgLabel);
+                addImageMsg(imgUrl, imgLabel, _exShape);
               }, 400);
             }
           })
