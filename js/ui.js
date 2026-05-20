@@ -1322,6 +1322,7 @@ export function updateQuickFromText(text) {
     setQuick(['네 정리해주세요', '조금 더 볼게요'], true); return;
   }
   /* 색상 — 좁힘 금지(취향 존중). AI가 특정 색 2개 언급해도, 그 색이 속한 팔레트 전체를 노출. */
+  /* ⚠️ 순서 중요 — longest-first (substring 충돌 방지). 새 색 추가 시 길이 긴 것부터. */
   const COLOR_TOKENS = ['솔리드화이트','화이트오크','샴페인골드','다크월넛','스톤그레이','진그레이','민트그린','메이플','블랙','실버','화이트'];
   const FRAME_COLORS = new Set(['화이트','블랙','실버','샴페인골드']);
   const SHELF_COLORS = new Set(['솔리드화이트','화이트오크','메이플','스톤그레이','진그레이','다크월넛','민트그린']);

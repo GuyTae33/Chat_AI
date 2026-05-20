@@ -663,12 +663,13 @@ const SCORE_THRESHOLD = 50;
 function scoreRow(row, shape, unitsNum, optList) {
   let score = 0;
   if (shape && row.shape === shape) score += 100;
-  /* v2 테이블 컬럼명: units → cells, options → modules (modules_normalized 우선 사용) */
+  /* v2 테이블 컬럼명: units → cells, options → modules (modules_normalized 우선 사용)
+     ※ 0칸 row는 무효 데이터로 간주하고 가산점·매칭에서 제외 */
   const rowUnits = row.cells != null ? row.cells : row.units;
-  if (unitsNum > 0 && rowUnits != null) {
+  if (unitsNum > 0 && rowUnits != null && rowUnits > 0) {
     const diff = Math.abs(rowUnits - unitsNum);
     score += Math.max(0, 50 - diff * 15);
-  } else if (unitsNum === 0 && rowUnits != null) {
+  } else if (unitsNum === 0 && rowUnits != null && rowUnits > 0) {
     /* 사용자가 칸수 미지정 — 중간 사이즈(5~6칸) 우선해서 형태 코너가 잘 보이게 */
     if (rowUnits >= 5 && rowUnits <= 6) score += 30;
     else if (rowUnits >= 4 && rowUnits <= 7) score += 15;

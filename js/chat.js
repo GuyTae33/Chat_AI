@@ -562,7 +562,16 @@ async function send(prefilledText) {
           }
         }
       }
-      if (_followText) updateQuickFromText(_followText);
+      if (_followText) {
+        updateQuickFromText(_followText);
+      } else {
+        /* fallback: followText 추출 실패 시 reply의 마지막 '?' 포함 문장만 검사
+           견적 본문 키워드(거울장/블랙 등)는 보통 문장 끝이 아니라 카드 오발동 위험 없음 */
+        const _lastQ = reply.split(/(?<=[?？])/).reverse().find(s => /[?？]/.test(s));
+        if (_lastQ && _lastQ.trim().length > 0 && _lastQ.trim().length < 200) {
+          updateQuickFromText(_lastQ.trim());
+        }
+      }
     } else {
       updateQuickFromText(reply);
     }
