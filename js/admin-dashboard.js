@@ -138,9 +138,13 @@ async function loadSourceStats(period = 'today') {
 }
 window.loadSourceStats = loadSourceStats;
 
-/* A' — 어드민 첫 로드 시 4개 기간 병렬 프리워밍 (백그라운드, UI 영향 없음) */
+/* A' — 어드민 첫 로드 시 4개 기간 병렬 프리워밍 + 'today' 즉시 렌더
+   (프리워밍만 하면 첫 화면이 빈 상태로 남고, 다른 버튼 누르고 돌아와야 보이는 회귀 발생) */
 function prewarmSourceStats() {
   _SRC_PERIODS.forEach(p => { _fetchSrcStats(p).catch(() => {}); });
+  /* 기본 활성 기간 'today' 첫 렌더 발동 — 캐시 히트면 즉시, 미스면 fetch 후 표시.
+     sourceStatsList DOM이 아직 없으면 loadSourceStats 안에서 early return → 안전 */
+  loadSourceStats('today');
 }
 window.prewarmSourceStats = prewarmSourceStats;
 /* 스크립트 로드 시 자동 발동 — 어드민이 켜지자마자 백그라운드로 캐시 채움 */
