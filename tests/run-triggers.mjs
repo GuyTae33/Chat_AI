@@ -67,13 +67,14 @@ function detectTrigger(text) {
     if (cScan.includes(c)) { cPicked.push(c); cScan = cScan.split(c).join(' '); }
   }
   const _isQuoteSummary = /(합계|만원|견적|배송비|구성으로|예상\s*견적)/.test(text);
-  if (cPicked.length >= 2 && !_isQuoteSummary && /[?？]|어떤|좋으세요|중에|느낌|골라|선택|어울/.test(text)) return 'colorNarrow';
+  const _isFrameShelfQ = /(선반이랑\s*프레임|프레임이랑\s*선반|톤)/.test(text);
+  if (cPicked.length >= 2 && !_isQuoteSummary && !_isFrameShelfQ && /[?？]|어떤|좋으세요|중에|느낌|골라|선택|어울/.test(text)) return 'colorNarrow';
 
   /* 선반 색상 */
   if (/(선반\s*색상.*어떻게|선반\s*색상.*알려|선반\s*색상.*선택|선반\s*색상.*원하|어떤\s*선반\s*색상|선반\s*색상은)/.test(text)) return 'colorShelf';
 
   /* 프레임 색상 */
-  if (/(프레임\s*색상.*어떻게|프레임\s*색상.*알려|프레임\s*색상.*선택|어떤\s*프레임\s*색|프레임\s*색상은)/.test(text)) return 'colorFrame';
+  if (/(프레임\s*색상.*어떻게|프레임\s*색상.*알려|프레임\s*색상.*선택|어떤\s*프레임\s*색|프레임\s*색상은|프레임\s*색상.*원하|선반이랑\s*프레임\s*색상|프레임이랑\s*선반\s*색상|선반.*프레임.*색상.*원하|선반.*프레임.*색상.*톤|프레임.*색상.*톤)/.test(text)) return 'colorFrame';
 
   /* 색상 전반 */
   if (/(색상.*골라|색상.*선택|어떤\s*색|원하시는\s*색|색상은|색상\s*어떻게|선반이랑\s*프레임)/.test(text)) return 'colorGeneral';
