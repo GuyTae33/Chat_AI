@@ -171,20 +171,25 @@ function renderVsSourceTable(bySource) {
   const tbody = document.getElementById('vsSourceTbody');
   if (!tbody) return;
   if (!bySource || bySource.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="padding:20px;text-align:center;color:#9ca3af;">데이터 없음</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="padding:20px;text-align:center;color:#9ca3af;">데이터 없음</td></tr>';
     return;
   }
-  tbody.innerHTML = bySource.map(row => `
+  tbody.innerHTML = bySource.map(row => {
+    const landing  = row.landing  ?? 0;
+    const chatRate = row.chatRate ?? 0;
+    return `
     <tr style="border-bottom:1px solid #f3f4f6;">
       <td style="padding:10px 8px;font-weight:600;color:#111827;">${vsEsc(row.src)}</td>
+      <td style="padding:10px 8px;text-align:right;color:#8b5cf6;">${landing}</td>
       <td style="padding:10px 8px;text-align:right;">${row.visitors}</td>
       <td style="padding:10px 8px;text-align:right;color:#3b82f6;">${row.engaged}</td>
       <td style="padding:10px 8px;text-align:right;color:#10b981;">${row.quoted}</td>
       <td style="padding:10px 8px;text-align:right;color:#f59e0b;">${row.submitted}</td>
+      <td style="padding:10px 8px;text-align:right;color:#6b7280;">${chatRate}%</td>
       <td style="padding:10px 8px;text-align:right;color:#6b7280;">${row.engageRate}%</td>
       <td style="padding:10px 8px;text-align:right;color:#6b7280;">${row.quoteRate}%</td>
     </tr>
-  `).join('');
+  `;}).join('');
 }
 
 /* ── 전역 노출 (admin.js에서 호출용) ── */

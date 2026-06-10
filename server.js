@@ -474,6 +474,37 @@ app.get('/api/version', (req, res) => {
   res.json({ v: SERVER_VERSION });
 });
 
+// ── 페이지 방문 비콘 (랜딩 방문 추적, 채팅 진입 전 단계) ─────
+// 광고 클릭 → 랜딩 도착했는지 추적용. 채팅 안 들어가도 카운트.
+// 같은 visitor_key 24h 쿨다운은 클라이언트에서 처리.
+app.post('/api/track-visit', chatRateLimit, async (req, res) => {
+  // 비콘은 절대 클라이언트를 블락하지 않음 — 항상 200 즉시 응답
+  res.json({ ok: true });
+  try {
+    const sanitize = (v) => (typeof v === 'string' ? v : '').trim().slice(0, 50)
+      .replace(/[^a-zA-Z0-9_\-]/g, '');
+    const { src, src2, page, visitor_key } = req.body || {};
+    const ua = (req.headers['user-agent'] || '').slice(0, 250);
+    const pageStr = (typeof page === 'string' ? page : '').slice(0, 200);
+    const vkStr = (typeof visitor_key === 'string' ? visitor_key : '')
+      .replace(/[^a-zA-Z0-9_\-]/g, '').slice(0, 100);
+    const srcStr = sanitize(src);
+    const src2Str = sanitize(src2);
+    if (!srcStr && !pageStr) return; // 의미 없는 신호는 저장 안 함
+    supabase.from('page_visits').insert({
+      src:         srcStr || null,
+      src2:        src2Str || null,
+      page:        pageStr || null,
+      ua,
+      visitor_key: vkStr || null,
+    }).then(({ error }) => {
+      if (error) console.warn('[page_visits] 저장 실패:', error.message);
+    });
+  } catch (e) {
+    console.warn('[track-visit] 처리 오류:', e.message);
+  }
+});
+
 // ── 파일 업로드 (Supabase Storage) ───────────────────────────
 const STORAGE_BUCKET = 'lumane-uploads';
 
@@ -1346,8 +1377,12 @@ app.get('/api/admin/stats/visitors', async (req, res) => {
     rangeStartDate.setUTCDate(todayStart.getUTCDate() - (range - 1));
     const rangeStartStr = rangeStartDate.toISOString().slice(0, 10);
 
-    // 병렬 쿼리: visitor_logs, conversations, quotes
-    const [vlRes, cvRes, qtRes] = await Promise.all([
+    // 병렬 쿼리: page_visits(랜딩), visitor_logs(채팅 진입), conversations, quotes
+    const [pvRes, vlRes, cvRes, qtRes] = await Promise.all([
+      supabase.from('page_visits')
+        .select('src, visitor_key, created_at')
+        .gte('created_at', rangeStartDate.toISOString())
+        .limit(50000),
       supabase.from('visitor_logs')
         .select('session_id, src, visited_date')
         .gte('visited_date', rangeStartStr)
@@ -1363,9 +1398,10 @@ app.get('/api/admin/stats/visitors', async (req, res) => {
         .limit(50000),
     ]);
 
-    const visitorRows = vlRes.data || [];
-    const convRows    = cvRes.data || [];
-    const quoteRows   = qtRes.data || [];
+    const pageVisitRows = pvRes.data || [];
+    const visitorRows   = vlRes.data || [];
+    const convRows      = cvRes.data || [];
+    const quoteRows     = qtRes.data || [];
 
     // 오늘 방문/대화 session_id 집합
     const visitorsTodaySet = new Set(
@@ -1421,37 +1457,56 @@ app.get('/api/admin/stats/visitors', async (req, res) => {
     const totalSubmitted = quoteRows.filter(q => q.status && q.status !== '접수').length;
 
     // 유입소스별 성과 (전체 기간)
-    const sourceMap = new Map(); // src → {visitors:Set, engaged:Set, quoted:Set, submitted:Set}
+    // landing: page_visits 기준 랜딩 방문 (visitor_key 유니크 카운트)
+    // visitors: visitor_logs 기준 채팅 진입 (session_id 유니크 카운트)
+    // engaged: conversations 기준 실제 대화 시작
+    // quoted/submitted: quotes 기준
+    const _emptyBucket = () => ({
+      landing: new Set(),
+      visitors: new Set(),
+      engaged: new Set(),
+      quoted: 0,
+      submitted: 0,
+    });
+    const sourceMap = new Map();
+    pageVisitRows.forEach(p => {
+      const key = p.src || '직접';
+      if (!sourceMap.has(key)) sourceMap.set(key, _emptyBucket());
+      if (p.visitor_key) sourceMap.get(key).landing.add(p.visitor_key);
+    });
     visitorRows.forEach(v => {
       const key = v.src || '직접';
-      if (!sourceMap.has(key)) sourceMap.set(key, { visitors: new Set(), engaged: new Set(), quoted: 0, submitted: 0 });
+      if (!sourceMap.has(key)) sourceMap.set(key, _emptyBucket());
       if (v.session_id) sourceMap.get(key).visitors.add(v.session_id);
     });
     convRows.forEach(c => {
       const key = c.src || '직접';
-      if (!sourceMap.has(key)) sourceMap.set(key, { visitors: new Set(), engaged: new Set(), quoted: 0, submitted: 0 });
+      if (!sourceMap.has(key)) sourceMap.set(key, _emptyBucket());
       if (c.session_id) sourceMap.get(key).engaged.add(c.session_id);
     });
     quoteRows.forEach(q => {
       const key = q.source || '직접';
-      if (!sourceMap.has(key)) sourceMap.set(key, { visitors: new Set(), engaged: new Set(), quoted: 0, submitted: 0 });
+      if (!sourceMap.has(key)) sourceMap.set(key, _emptyBucket());
       sourceMap.get(key).quoted++;
       if (q.status && q.status !== '접수') sourceMap.get(key).submitted++;
     });
 
     const bySource = [...sourceMap.entries()].map(([src, m]) => {
+      const l = m.landing.size;
       const v = m.visitors.size;
       const e = m.engaged.size;
       return {
         src,
+        landing:   l,
         visitors:  v,
         engaged:   e,
         quoted:    m.quoted,
         submitted: m.submitted,
         engageRate: v > 0 ? Math.round((e / v) * 1000) / 10 : 0,
         quoteRate:  v > 0 ? Math.round((m.quoted / v) * 1000) / 10 : 0,
+        chatRate:   l > 0 ? Math.round((v / l) * 1000) / 10 : 0,
       };
-    }).sort((a, b) => b.visitors - a.visitors);
+    }).sort((a, b) => (b.landing || b.visitors) - (a.landing || a.visitors));
 
     // 시간대별 분포 (오늘 대화 시작 시각 기준)
     const hourly = Array.from({ length: 24 }, (_, h) => ({ hour: h, conversations: 0 }));
