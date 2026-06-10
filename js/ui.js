@@ -1368,10 +1368,8 @@ export function updateQuickFromText(text) {
       /(드레스룸\s*형태|형태.*어떻게|어떤\s*형태|형태.*선택|어느\s*형태|형태로\s*생각|형태.*인지|형태.*계세요|어떤\s*형태로)/.test(text)) {
     setShapeCards({ inline: true }); return;
   }
-  /* 설치 공간 — 칩 (광역 '설치.*공간' 제거 — 형태질문 오탐 방지) */
-  if (/(어느\s*공간|어떤\s*공간|공간에\s*설치|설치할\s*공간|설치하실\s*공간|어디에\s*설치)/.test(text)) {
-    setQuick(['안방', '거실', '작은방', '드레스룸', '베란다'], true); return;
-  }
+  /* 설치 공간 트리거 — 제거 (지침 06/19: "어느 공간에 설치?" 절대 금지 항목과 정합)
+     AI가 실수로 물어도 칩이 안 뜨도록. AI 응답이 잘못된 경우 ai-prompt-validator 별도 처리. */
   /* 커튼박스 — 카드 (용어 모름 다수 → 설명 동반) */
   if (/(커튼박스|커튼\s*박스)/.test(text)) {
     setCurtainCards({ inline: true }); return;
