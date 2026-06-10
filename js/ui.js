@@ -927,6 +927,7 @@ const SHAPE_CARDS = [
 /* 예산 구간 — 지침/10_예외처리규칙.md 형태별 참고 가격대에 맞춰 설계
    1자형 소형 기본 ~35만 / 1자형 옵션포함 35~70만 / ㄱ자형 60~90만 / ㄷ자형 옵션포함 80~150만 */
 const BUDGET_CARDS = [
+  { value: '예산 추천해주세요',  emoji: '🤔', label: '추천해주세요',    sub: '가격 감이 없어요 — 형태부터 골라볼게요' },
   { value: '50만원 이하',       emoji: '💡', label: '50만원 이하',     sub: '1자형 기본 구성' },
   { value: '50~100만원',        emoji: '🪑', label: '50 ~ 100만원',    sub: '1자형 옵션 또는 ㄱ자형 기본' },
   { value: '100~150만원',       emoji: '✨', label: '100 ~ 150만원',   sub: 'ㄱ자형 옵션 또는 ㄷ자형 기본' },
@@ -964,6 +965,13 @@ const NEW_APT_CARDS = [
   { value: '신규아파트 맞아요',     emoji: '🆕', label: '네, 신규 입주예요',  sub: '3년 이내 새 아파트 (10% 할인)' },
   { value: '신규아파트 아니에요',   emoji: '🙅', label: '아니요',              sub: '그 외 — 일반 견적' },
   { value: '신규아파트 잘 모르겠어요', emoji: '❓', label: '잘 모르겠어요',    sub: '나중에 확인할게요' },
+];
+
+/* 커튼박스 여부 — 용어 모르는 손님 다수, 카드형으로 설명 동반 */
+const CURTAIN_CARDS = [
+  { value: '커튼박스 잘 모르겠어요', emoji: '🙆', label: '잘 모르겠어요',  sub: '괜찮아요 — 일단 없는 기준으로 진행할게요' },
+  { value: '커튼박스 있어요',        emoji: '✅', label: '있어요',          sub: '창문 위 천장이 안쪽으로 들어가 있어요' },
+  { value: '커튼박스 없어요',        emoji: '⬜', label: '없어요',          sub: '창문 위 천장이 평평해요' },
 ];
 
 function _sendCardValue(value, inlineHost) {
@@ -1012,6 +1020,7 @@ function _renderListCards(cards, opts) {
 export function setCeilingCards(opts) { _renderListCards(CEILING_CARDS, opts); }
 export function setRegionCards(opts)  { _renderListCards(REGION_CARDS,  opts); }
 export function setNewAptCards(opts)  { _renderListCards(NEW_APT_CARDS, opts); }
+export function setCurtainCards(opts) { _renderListCards(CURTAIN_CARDS, opts); }
 
 /* 마지막 봇 메시지의 .msg-bubbles-row 안에 카드 삽입용 호스트 생성/회수
    DOM 구조: .msg-group.bot > .msg-body > .msg-bubbles-row > [.msg-bubbles, .msg-meta]
@@ -1363,9 +1372,9 @@ export function updateQuickFromText(text) {
   if (/(어느\s*공간|어떤\s*공간|공간에\s*설치|설치할\s*공간|설치하실\s*공간|어디에\s*설치)/.test(text)) {
     setQuick(['안방', '거실', '작은방', '드레스룸', '베란다'], true); return;
   }
-  /* 커튼박스 — 칩 */
+  /* 커튼박스 — 카드 (용어 모름 다수 → 설명 동반) */
   if (/(커튼박스|커튼\s*박스)/.test(text)) {
-    setQuick(['있어요', '없어요', '잘 모르겠어요'], true); return;
+    setCurtainCards({ inline: true }); return;
   }
   /* 각 면 치수 — 직접입력 전용 + 보조칩 2개 (숫자라 카드 부적합) */
   if (/(각\s*면\s*치수|각\s*면.*길이|면\s*길이|치수.*알려|치수.*어떻게|치수.*되|치수.*되세요|면.*치수|가로.*세로.*높이|벽\s*길이|길이.*어떻게|길이.*되세요|길이가?\s*얼마|얼마나\s*긴|얼마나\s*길|얼마나\s*큰|얼마나\s*큰|어느\s*정도.*(긴|길|되)|얼마나.*벽|얼마나.*공간|몇\s*(미터|m|cm|mm))/.test(text)) {
