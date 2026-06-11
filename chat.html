@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="css/base.css" />
-  <link rel="stylesheet" href="css/chat.css?v=20260611f" />
+  <link rel="stylesheet" href="css/chat.css?v=20260611g" />
   <style>
     /* 킵3 디자인 — 채팅 페이지에서 상단 site-header 제거, 사이드바로 흡수 */
     .site-header { display: none !important; }
@@ -41,6 +41,75 @@
       inset: 0;
       background: rgba(0,0,0,.4);
       z-index: 9998;
+    }
+    /* 사이드바 내부 스타일 — PC 미디어쿼리 안에 갇혀있어 모바일에서 안 먹는 거 보강 */
+    body.is-mobile-view .pc-panel-brand {
+      padding: 22px 20px 16px;
+      border-bottom: 1px solid #ebe6df;
+    }
+    body.is-mobile-view .pc-panel-brand-logo {
+      font-size: 11px; font-weight: 700; color: #c9a96e;
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px;
+    }
+    body.is-mobile-view .pc-panel-brand-name {
+      font-size: 17px; font-weight: 800; letter-spacing: -.3px; color: #1a1a1a;
+    }
+    body.is-mobile-view .pc-panel-brand-tagline {
+      font-size: 11px; color: #6b6b6b; margin-top: 2px;
+    }
+    body.is-mobile-view .pc-panel-nav {
+      flex: 1;
+      padding: 16px 12px;
+      overflow-y: auto;
+    }
+    body.is-mobile-view .pc-panel-nav-section {
+      font-size: 10px; font-weight: 700; color: #a8a8a8;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      margin: 16px 8px 8px;
+    }
+    body.is-mobile-view .pc-panel-nav-section:first-child { margin-top: 0; }
+    body.is-mobile-view .pc-panel-nav-link {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px;
+      cursor: pointer; font-size: 13px; font-weight: 500;
+      color: #1a1a1a; text-decoration: none;
+      transition: all .15s;
+    }
+    body.is-mobile-view .pc-panel-nav-link:hover { background: #f3ead8; }
+    body.is-mobile-view .pc-panel-nav-link.active {
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      font-weight: 600; color: #b08850;
+    }
+    body.is-mobile-view .pcn-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: #ede3ce;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    body.is-mobile-view .pc-panel-nav-link.active .pcn-icon {
+      background: linear-gradient(135deg, #c9a96e, #b08850);
+    }
+    body.is-mobile-view .pc-panel-profile {
+      padding: 14px 12px;
+      border-top: 1px solid #ebe6df;
+      display: flex; align-items: center; gap: 10px;
+    }
+    body.is-mobile-view .pc-panel-profile-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #c9a96e, #b08850);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; flex-shrink: 0;
+    }
+    body.is-mobile-view .pc-panel-profile-name { font-size: 13px; font-weight: 700; }
+    body.is-mobile-view .pc-panel-profile-status {
+      font-size: 11px; color: #6b6b6b;
+      display: flex; align-items: center; gap: 6px; margin-top: 2px;
+    }
+    body.is-mobile-view .pc-panel-profile-status .dot-live {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #4caf50;
+      display: inline-block;
     }
     body.is-mobile-view .page { flex-direction: column !important; }
     body.is-mobile-view .shell { width: 100% !important; max-width: 100% !important; }
