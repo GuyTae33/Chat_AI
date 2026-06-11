@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="css/base.css" />
-  <link rel="stylesheet" href="css/chat.css?v=20260611d" />
+  <link rel="stylesheet" href="css/chat.css?v=20260611e" />
   <style>
     /* 킵3 디자인 — 채팅 페이지에서 상단 site-header 제거, 사이드바로 흡수 */
     .site-header { display: none !important; }
@@ -19,18 +19,20 @@
     @media (max-width: 767px) {
       .page  { height: 100dvh; min-height: unset; flex-direction: column !important; }
       .shell { height: 100dvh; min-height: unset; width: 100% !important; max-width: 100% !important; }
-      /* 모바일에서 PC 사이드바 강제 숨김 — 외부 CSS·캐시 무시하고 우선 적용 */
-      body .pc-panel { display: none !important; }
-      body .pc-panel.mobile-open {
-        display: flex !important;
-        position: fixed !important;
-        top: 0 !important; left: 0 !important;
-        width: 85vw !important; max-width: 320px !important;
-        height: 100dvh !important;
-        z-index: 9999 !important;
-        flex-direction: column !important;
-      }
     }
+    /* JS가 body에 is-mobile-view 클래스 토글 — 미디어쿼리가 안 먹는 환경 대비 */
+    body.is-mobile-view .pc-panel { display: none !important; }
+    body.is-mobile-view .pc-panel.mobile-open {
+      display: flex !important;
+      position: fixed !important;
+      top: 0 !important; left: 0 !important;
+      width: 85vw !important; max-width: 320px !important;
+      height: 100dvh !important;
+      z-index: 9999 !important;
+      flex-direction: column !important;
+    }
+    body.is-mobile-view .page { flex-direction: column !important; }
+    body.is-mobile-view .shell { width: 100% !important; max-width: 100% !important; }
   </style>
 </head>
 <body>
@@ -395,6 +397,18 @@
       document.body.classList.add('embed-mode');
     }
     /* 음성 입력 핸들러는 ui.js initVoiceBtn()에서 일원화 관리 */
+
+    /* 미디어쿼리 fallback — JS로 직접 viewport 측정해서 body 클래스 토글
+       일부 환경에서 @media (max-width: 767px)가 안 먹는 경우 대비 */
+    (function syncMobileViewClass() {
+      function apply() {
+        var isMobile = window.innerWidth < 768;
+        document.body.classList.toggle('is-mobile-view', isMobile);
+      }
+      apply();
+      window.addEventListener('resize', apply);
+      window.addEventListener('orientationchange', apply);
+    })();
 
     (function(){
       var btn = document.getElementById('mobileSidebarBtn');
