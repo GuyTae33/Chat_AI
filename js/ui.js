@@ -928,10 +928,10 @@ const SHAPE_CARDS = [
    1자형 소형 기본 ~35만 / 1자형 옵션포함 35~70만 / ㄱ자형 60~90만 / ㄷ자형 옵션포함 80~150만 */
 const BUDGET_CARDS = [
   { value: '예산 추천해주세요',  emoji: '🤔', label: '추천해주세요',    sub: '가격 감이 없어요 — 형태부터 골라볼게요' },
-  { value: '50만원 이하',       emoji: '💡', label: '50만원 이하',     sub: '1자형 기본 구성' },
-  { value: '50~100만원',        emoji: '🪑', label: '50 ~ 100만원',    sub: '1자형 옵션 또는 ㄱ자형 기본' },
-  { value: '100~150만원',       emoji: '✨', label: '100 ~ 150만원',   sub: 'ㄱ자형 옵션 또는 ㄷ자형 기본' },
-  { value: '150만원 이상',      emoji: '💎', label: '150만원 이상',    sub: 'ㄷ자형 풀옵션 구성' },
+  { value: '50만원 이하',       emoji: '💡', label: '50만원 이하',     sub: '' },
+  { value: '50~100만원',        emoji: '🪑', label: '50 ~ 100만원',    sub: '' },
+  { value: '100~150만원',       emoji: '✨', label: '100 ~ 150만원',   sub: '' },
+  { value: '150만원 이상',      emoji: '💎', label: '150만원 이상',    sub: '' },
 ];
 const OPTION_CARDS = [
   { value: '거울장',     emoji: '🪞', label: '거울장',     price: '+169,000원' },
