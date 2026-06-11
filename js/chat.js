@@ -970,6 +970,15 @@ async function startChat() {
       }
       /* 복원 완료 후 맨 아래로 스크롤 */
       setTimeout(() => scrollBottom(), 80);
+      /* 복원 후 마지막 AI 메시지 기준 칩 재발동 — 기존 세션도 선택지 보이게 */
+      try {
+        const _lastBot = [...savedHistory].reverse().find(m =>
+          m && m.role === 'assistant' && typeof m.content === 'string' && m.content.trim()
+        );
+        if (_lastBot && _lastBot.content) {
+          setTimeout(() => updateQuickFromText(_lastBot.content), 100);
+        }
+      } catch (_) { /* 칩 재발동 실패는 무시 */ }
       /* 서버 세션에도 재동기화 */
       if (serverOnline) {
         registerSession();
