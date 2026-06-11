@@ -10,15 +10,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="css/base.css" />
-  <link rel="stylesheet" href="css/chat.css?v=20260611c" />
+  <link rel="stylesheet" href="css/chat.css?v=20260611d" />
   <style>
     /* 킵3 디자인 — 채팅 페이지에서 상단 site-header 제거, 사이드바로 흡수 */
     .site-header { display: none !important; }
     .page  { height: 100vh; min-height: unset; margin-top: 0; }
     .shell { height: 100vh; min-height: unset; }
     @media (max-width: 767px) {
-      .page  { height: 100dvh; min-height: unset; }
-      .shell { height: 100dvh; min-height: unset; }
+      .page  { height: 100dvh; min-height: unset; flex-direction: column !important; }
+      .shell { height: 100dvh; min-height: unset; width: 100% !important; max-width: 100% !important; }
+      /* 모바일에서 PC 사이드바 강제 숨김 — 외부 CSS·캐시 무시하고 우선 적용 */
+      body .pc-panel { display: none !important; }
+      body .pc-panel.mobile-open {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important; left: 0 !important;
+        width: 85vw !important; max-width: 320px !important;
+        height: 100dvh !important;
+        z-index: 9999 !important;
+        flex-direction: column !important;
+      }
     }
   </style>
 </head>
