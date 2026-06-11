@@ -1416,7 +1416,10 @@ export function updateQuickFromText(text) {
   const _isQuoteSummary = /(합계|만원|견적|배송비|구성으로|예상\s*견적)/.test(text);
   /* 선반·프레임 동시 톤 질문이면 아래 colorFrame이 4종 띄우게 양보 */
   const _isFrameShelfQ = /(선반이랑\s*프레임|프레임이랑\s*선반|톤)/.test(text);
-  if (_cPicked.length >= 2 && !_isQuoteSummary && !_isFrameShelfQ && /[?？]|어떤|좋으세요|중에|느낌|골라|선택|어울/.test(text)) {
+  /* 옵션 질문 문맥 (서랍장·거울장 등 옵션 품목 + 질문어)이면 색상 트리거 양보 — 옵션 카드가 더 적절 */
+  const _isOptionTopic = /(서랍장|거울장|디바이더|바지걸이|이불장|화장대|아일랜드장)/.test(text) &&
+                         /(옵션|추가|생각\s*중|원하|넣|구성)/.test(text);
+  if (_cPicked.length >= 2 && !_isQuoteSummary && !_isFrameShelfQ && !_isOptionTopic && /[?？]|어떤|좋으세요|중에|느낌|골라|선택|어울/.test(text)) {
     const _frameHit = _cPicked.filter(c => FRAME_COLORS.has(c)).length;
     const _shelfHit = _cPicked.filter(c => SHELF_COLORS.has(c)).length;
     if (_shelfHit >= 2 && _frameHit === 0) {
