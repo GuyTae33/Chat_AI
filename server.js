@@ -2312,28 +2312,42 @@ app.post('/api/quote', chatRateLimit, async (req, res) => {
 
     // M1 fix: 첨부 사진 처리 — base64 dataURL → Storage 업로드 → URL을 request_memo에 첨부
     let photoUrl = '';
+    let photoSkipped = ''; // 사용자 응답용 (size/format/upload)
     if (typeof b.file_data === 'string' && /^data:image\/(jpe?g|png|webp);base64,/.test(b.file_data)) {
       try {
         const m = b.file_data.match(/^data:image\/(jpe?g|png|webp);base64,(.+)$/);
         if (m) {
           const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
           const buf = Buffer.from(m[2], 'base64');
-          if (buf.length <= 5 * 1024 * 1024) {
-            const fname = `quote-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.${ext}`;
-            const { error: upErr } = await supabase.storage
-              .from(STORAGE_BUCKET)
-              .upload(fname, buf, { contentType: `image/${m[1]}`, upsert: false });
-            if (!upErr) {
-              const { data: { publicUrl } } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fname);
-              photoUrl = publicUrl;
-            } else {
-              console.warn('[QUOTE_PHOTO_UPLOAD]', upErr.message);
-            }
-          } else {
+          if (buf.length > 5 * 1024 * 1024) {
+            photoSkipped = 'size';
             console.warn('[QUOTE_PHOTO_SIZE] base64 decode 결과 5MB 초과 — 사진 미저장');
+          } else {
+            // 매직바이트 검증 — 헤더가 실제 이미지인지 확인 (polyglot/위장 차단)
+            const isJpg  = buf.length > 3 && buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF;
+            const isPng  = buf.length > 7 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47
+                                          && buf[4] === 0x0D && buf[5] === 0x0A && buf[6] === 0x1A && buf[7] === 0x0A;
+            const isWebp = buf.length > 11 && buf.slice(0,4).toString('ascii') === 'RIFF' && buf.slice(8,12).toString('ascii') === 'WEBP';
+            if (!(isJpg || isPng || isWebp)) {
+              photoSkipped = 'format';
+              console.warn('[QUOTE_PHOTO_FORMAT] 매직바이트 불일치 — 사진 미저장');
+            } else {
+              const fname = `quote-${Date.now()}-${crypto.randomBytes(3).toString('hex')}.${ext}`;
+              const { error: upErr } = await supabase.storage
+                .from(STORAGE_BUCKET)
+                .upload(fname, buf, { contentType: `image/${m[1]}`, upsert: false });
+              if (!upErr) {
+                const { data: { publicUrl } } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fname);
+                photoUrl = publicUrl;
+              } else {
+                photoSkipped = 'upload';
+                console.warn('[QUOTE_PHOTO_UPLOAD]', upErr.message);
+              }
+            }
           }
         }
       } catch (e) {
+        photoSkipped = 'error';
         console.warn('[QUOTE_PHOTO_ERR]', e.message);
       }
     }
@@ -2371,7 +2385,7 @@ app.post('/api/quote', chatRateLimit, async (req, res) => {
     if (error) throw error;
 
     console.log(`✅ 견적 폼 접수: ${payload.quote_number} (${payload.name})`);
-    res.json({ ok: true, quote_number: payload.quote_number, id: data?.id });
+    res.json({ ok: true, quote_number: payload.quote_number, id: data?.id, photo_skipped: photoSkipped || null });
   } catch (err) {
     console.error('견적 폼 접수 오류:', err.message);
     res.status(500).json({ error: '저장 실패' });
